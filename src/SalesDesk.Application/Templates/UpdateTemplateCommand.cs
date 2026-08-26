@@ -9,7 +9,7 @@ using SalesDesk.Domain.Templates;
 
 namespace SalesDesk.Application.Templates;
 
-public sealed record UpdateTemplateCommand(Guid Id, string Name, TemplateTargetType TargetType, string? Description, string? AccentColor)
+public sealed record UpdateTemplateCommand(Guid Id, string Name, TemplateTargetType TargetType, string? Description, string? AccentColor, string? ContentHtml = null)
     : IRequest<TemplateDto>;
 
 public sealed class UpdateTemplateCommandValidator : AbstractValidator<UpdateTemplateCommand>
@@ -27,7 +27,7 @@ public sealed class UpdateTemplateCommandHandler(IApplicationDbContext context, 
             .FirstOrDefaultAsync(t => t.Id == request.Id && t.WorkspaceId == workspaceId, cancellationToken)
             ?? throw new NotFoundException(nameof(Template), request.Id);
 
-        template.UpdateDetails(request.Name, request.TargetType, request.Description, request.AccentColor);
+        template.UpdateDetails(request.Name, request.TargetType, request.Description, request.AccentColor, request.ContentHtml);
         await context.SaveChangesAsync(cancellationToken);
 
         return mapper.Map<TemplateDto>(template);

@@ -14,6 +14,8 @@ public sealed class TemplateDto
 
     public string? AccentColor { get; init; }
 
+    public string? ContentHtml { get; init; }
+
     public bool IsDefault { get; init; }
 
     public int UsageCount { get; init; }

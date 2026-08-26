@@ -35,12 +35,15 @@ public class TemplateHandlersTests
         var handler = new CreateTemplateCommandHandler(fixture.Context, fixture.Mapper, CurrentUser);
 
         var result = await handler.Handle(
-            new CreateTemplateCommand("Warm Proposal", TemplateTargetType.QuotesOnly, "For thoughtful project proposals.", "#D9A441"),
+            new CreateTemplateCommand(
+                "Warm Proposal", TemplateTargetType.QuotesOnly, "For thoughtful project proposals.", "#D9A441",
+                "<p>Hi {{Customer.Name}}</p>"),
             CancellationToken.None);
 
         result.Id.Should().NotBeEmpty();
         result.IsDefault.Should().BeFalse();
         result.UsageCount.Should().Be(0);
+        result.ContentHtml.Should().Be("<p>Hi {{Customer.Name}}</p>");
         (await fixture.Context.Templates.CountAsync(CancellationToken.None)).Should().Be(1);
     }
 
@@ -54,11 +57,14 @@ public class TemplateHandlersTests
 
         var handler = new UpdateTemplateCommandHandler(fixture.Context, fixture.Mapper, CurrentUser);
         var result = await handler.Handle(
-            new UpdateTemplateCommand(template.Id, "Studio Standard v2", TemplateTargetType.InvoicesOnly, "Updated layout.", "#2F6F6C"),
+            new UpdateTemplateCommand(
+                template.Id, "Studio Standard v2", TemplateTargetType.InvoicesOnly, "Updated layout.", "#2F6F6C",
+                "<p>Total due: {{Document.Total}}</p>"),
             CancellationToken.None);
 
         result.Name.Should().Be("Studio Standard v2");
         result.TargetType.Should().Be(TemplateTargetType.InvoicesOnly);
+        result.ContentHtml.Should().Be("<p>Total due: {{Document.Total}}</p>");
         // IsDefault isn't part of the editable field set — should be untouched.
         result.IsDefault.Should().BeTrue();
     }

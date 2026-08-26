@@ -30,6 +30,9 @@ public sealed class TemplateConfiguration : IEntityTypeConfiguration<Template>
         builder.Property(t => t.AccentColor)
             .HasMaxLength(20);
 
+        builder.Property(t => t.ContentHtml)
+            .HasColumnType("text");
+
         builder.Property(t => t.IsDefault)
             .IsRequired()
             .HasDefaultValue(false);

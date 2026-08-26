@@ -7,7 +7,7 @@ using SalesDesk.Domain.Templates;
 
 namespace SalesDesk.Application.Templates;
 
-public sealed record CreateTemplateCommand(string Name, TemplateTargetType TargetType, string? Description, string? AccentColor)
+public sealed record CreateTemplateCommand(string Name, TemplateTargetType TargetType, string? Description, string? AccentColor, string? ContentHtml = null)
     : IRequest<TemplateDto>;
 
 public sealed class CreateTemplateCommandValidator : AbstractValidator<CreateTemplateCommand>
@@ -20,7 +20,9 @@ public sealed class CreateTemplateCommandHandler(IApplicationDbContext context, 
 {
     public async Task<TemplateDto> Handle(CreateTemplateCommand request, CancellationToken cancellationToken)
     {
-        var template = new Template(currentUser.RequireWorkspaceId(), request.Name, request.TargetType, request.Description, request.AccentColor);
+        var template = new Template(
+            currentUser.RequireWorkspaceId(), request.Name, request.TargetType, request.Description, request.AccentColor,
+            contentHtml: request.ContentHtml);
 
         context.Templates.Add(template);
         await context.SaveChangesAsync(cancellationToken);

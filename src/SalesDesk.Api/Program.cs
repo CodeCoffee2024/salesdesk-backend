@@ -96,12 +96,16 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// TASK-020: apply pending EF Core migrations on every boot (dev and deployed
+// TASK-020: apply pending EF Core migrations on every real boot (dev and deployed
 // environments alike) so a Railway/Render release doesn't need a separate manual
 // migration step. Seeding stays dev-only — a deployed database must not be reset
-// to demo data on every restart.
-using (var scope = app.Services.CreateScope())
+// to demo data on every restart. "Testing" is the one exception: it's the sentinel
+// environment WebApplicationFactory-based tests boot under specifically so a
+// config/DI/routing smoke test doesn't need a live, reachable Postgres just to
+// build the host — see SalesDeskApiFactory / HealthControllerTests.
+if (!app.Environment.IsEnvironment("Testing"))
 {
+    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<SalesDeskDbContext>();
     await dbContext.Database.MigrateAsync();
 

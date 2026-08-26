@@ -58,7 +58,10 @@ public static class SalesDeskDbContextSeeder
 
         var studioStandard = new Template(
             workspace.Id, "Studio Standard", TemplateTargetType.QuotesAndInvoices,
-            "Warm, editorial layout for polished client work.", "#D9A441", isDefault: true);
+            "Warm, editorial layout for polished client work.", "#D9A441", isDefault: true,
+            contentHtml: "<h2>Thank you, {{Customer.Name}}</h2>"
+                + "<p>Prepared for <strong>{{Customer.Company}}</strong> — document {{Document.Number}}, due {{Document.DueDate}}.</p>"
+                + "<p>We're glad to put this together for you. Reach out any time at {{Customer.Email}}.</p>");
         var modernMinimal = new Template(
             workspace.Id, "Modern Minimal", TemplateTargetType.QuotesAndInvoices,
             "Crisp, compact format for fast-moving projects.", "#2F6F6C");

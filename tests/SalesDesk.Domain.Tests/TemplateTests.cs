@@ -48,4 +48,33 @@ public class TemplateTests
         template.UnmarkAsDefault();
         template.IsDefault.Should().BeFalse();
     }
+
+    [Fact]
+    public void Constructor_defaults_ContentHtml_to_null_when_not_supplied()
+    {
+        var template = new Template(WorkspaceId, "Studio Standard");
+
+        template.ContentHtml.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_stores_the_supplied_ContentHtml()
+    {
+        var template = new Template(
+            WorkspaceId, "Studio Standard", contentHtml: "<p>Hello {{Customer.Name}}</p>");
+
+        template.ContentHtml.Should().Be("<p>Hello {{Customer.Name}}</p>");
+    }
+
+    [Fact]
+    public void UpdateDetails_replaces_ContentHtml()
+    {
+        var template = new Template(WorkspaceId, "Studio Standard", contentHtml: "<p>Old body</p>");
+
+        template.UpdateDetails(
+            "Studio Standard", TemplateTargetType.QuotesAndInvoices, "desc", "#000000",
+            "<p>New body with {{Document.Number}}</p>");
+
+        template.ContentHtml.Should().Be("<p>New body with {{Document.Number}}</p>");
+    }
 }
