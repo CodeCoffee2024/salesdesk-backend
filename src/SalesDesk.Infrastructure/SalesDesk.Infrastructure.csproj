@@ -1,0 +1,39 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\SalesDesk.Application\SalesDesk.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Pinned to 9.0.4, not the newer 9.0.19 core EF Core release: Npgsql.EntityFrameworkCore.PostgreSQL
+      (the PostgreSQL provider) only publishes up to 9.0.4, and it depends on
+      Microsoft.EntityFrameworkCore.Relational at that same version. Keeping every
+      Microsoft.EntityFrameworkCore.* package on 9.0.4 keeps them all on the same
+      coordinated release instead of letting NuGet resolve Relational down to its
+      lowest satisfying floor while Core sits on a newer, untested-together patch.
+    -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" Version="9.0.4" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.4">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+    <PackageReference Include="EFCore.NamingConventions" Version="9.0.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.4" />
+    <!-- Password hashing (Auth) -->
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
+    <!-- JWT issuance (Auth) — kept at the same 9.0.x line as the JwtBearer package the Api project uses to validate these tokens. -->
+    <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.16.0" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>

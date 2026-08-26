@@ -1,0 +1,57 @@
+name: Deploy API
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  DOTNET_VERSION: "9.0.x"
+
+jobs:
+  test:
+    name: Build & test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore
+        run: dotnet restore SalesDesk.Backend.sln
+
+      - name: Build
+        run: dotnet build SalesDesk.Backend.sln --no-restore -c Release
+
+      # Domain and Application tests are pure unit tests with no external
+      # dependencies. Infrastructure/API/Integration tests need a running
+      # Postgres instance and are intentionally left for a separate
+      # docker-compose-backed job rather than slowing down every PR here.
+      - name: Unit tests
+        run: |
+          dotnet test tests/SalesDesk.Domain.Tests/SalesDesk.Domain.Tests.csproj --no-build -c Release
+          dotnet test tests/SalesDesk.Application.Tests/SalesDesk.Application.Tests.csproj --no-build -c Release
+
+  deploy:
+    name: Deploy to Railway
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Railway builds the api.Dockerfile itself (see railway.json /
+      # infrastructure/docker/api.Dockerfile) — this step only triggers that
+      # build+release against the service already provisioned in the Railway
+      # project. RAILWAY_TOKEN is a deployment-platform secret, never a repo
+      # secret checked into source (see DEPLOYMENT.md).
+      - name: Install Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Deploy
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --service salesdesk-api --detach

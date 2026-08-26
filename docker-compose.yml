@@ -1,0 +1,40 @@
+services:
+
+  postgres:
+    image: postgres:17
+    container_name: salesdesk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-salesdesk}
+      POSTGRES_USER: ${POSTGRES_USER:-salesdesk}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-salesdesk}
+    ports:
+      - "5432:5432"
+    volumes:
+      - salesdesk-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-salesdesk} -d ${POSTGRES_DB:-salesdesk}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: infrastructure/docker/api.Dockerfile
+    container_name: salesdesk-api
+    restart: unless-stopped
+    ports:
+      - "5000:8080"
+    environment:
+      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      # Inside the compose network the database is reachable by service name.
+      ConnectionStrings__SalesDesk: "Host=postgres;Port=5432;Database=${POSTGRES_DB:-salesdesk};Username=${POSTGRES_USER:-salesdesk};Password=${POSTGRES_PASSWORD:-salesdesk}"
+      Jwt__Secret: ${JWT_SECRET:?Set JWT_SECRET in a .env file or your shell before running docker compose}
+      Cors__AllowedOrigins__0: ${FRONTEND_ORIGIN:-http://localhost:4200}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  salesdesk-postgres:

@@ -1,0 +1,20 @@
+## .NET
+bin/
+obj/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+TestResults/
+[Cc]overage*/
+
+## Visual Studio / Rider / VS Code
+.vs/
+.idea/
+*.userprefs
+
+## Environment / secrets
+.env
+.env.local
+*.pfx
+appsettings.*.local.json

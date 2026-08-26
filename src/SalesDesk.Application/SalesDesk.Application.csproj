@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    MediatR pinned to 12.5.0, the last version under its original free license
+    (13+ requires a paid commercial license unless the company is under $5M
+    revenue). Bumping it past 12.x is a licensing decision, not a routine update.
+
+    AutoMapper pinned to 10.0.0 for the same free-license reason (15+ is
+    commercial) — but note every free AutoMapper release from 10.0.0 through
+    14.0.0 carries the same known High-severity vulnerability
+    (GHSA-rvv3-g6hj-g44x, surfaced by "dotnet list package [dash-dash]vulnerable"),
+    with no fix available outside the paid 15.x+ line. 10.0.0 was chosen
+    deliberately over a newer free release: accepted knowingly, not overlooked.
+  -->
+  <ItemGroup>
+    <ProjectReference Include="..\SalesDesk.Domain\SalesDesk.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MediatR" Version="12.5.0" />
+    <PackageReference Include="AutoMapper" Version="10.0.0" />
+    <!-- FluentValidation: Apache-2.0, no commercial tier, still free at latest. -->
+    <PackageReference Include="FluentValidation" Version="12.1.1" />
+    <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
+    <!-- Only for the DbSet<T>-shaped IApplicationDbContext abstraction below — no
+         provider (Npgsql) here. Kept at the same version as Infrastructure's EF
+         Core packages. -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.4" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+</Project>
