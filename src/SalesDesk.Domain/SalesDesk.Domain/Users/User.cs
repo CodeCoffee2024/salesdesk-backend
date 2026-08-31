@@ -26,6 +26,14 @@ public sealed class User : Entity
 
     public DateTime? PasswordResetTokenExpiresAtUtc { get; private set; }
 
+    /// <summary>
+    /// Set once this user dismisses or finishes the first-login onboarding
+    /// checklist/tour (TASK-029) — a durable, per-user, cross-device flag rather
+    /// than a localStorage-only dismissal, per the task's own guardrail that it
+    /// must never pop up unprompted twice. Defaults false for every new account.
+    /// </summary>
+    public bool HasCompletedOnboarding { get; private set; }
+
     private User()
     {
         Email = string.Empty;
@@ -51,6 +59,12 @@ public sealed class User : Entity
     public void ChangeRole(Role role)
     {
         Role = role;
+    }
+
+    /// <summary>Idempotent — skipping the tour, finishing it, or completing every checklist step all just call this once.</summary>
+    public void CompleteOnboarding()
+    {
+        HasCompletedOnboarding = true;
     }
 
     /// <summary>Issuing a new token invalidates whatever's currently outstanding — only the most recently requested reset link ever works.</summary>

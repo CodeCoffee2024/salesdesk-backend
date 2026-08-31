@@ -229,4 +229,25 @@ public class AuthHandlersTests
         var end = htmlBody.IndexOf('"', start);
         return htmlBody[start..end];
     }
+
+    [Fact]
+    public async Task CompleteOnboarding_marks_the_current_user_as_onboarded()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var registerHandler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var registerResult = await registerHandler.Handle(
+            new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
+
+        registerResult.User.HasCompletedOnboarding.Should().BeFalse();
+
+        var currentUser = new FakeCurrentUserService(registerResult.User.WorkspaceId, registerResult.User.Id);
+        var handler = new CompleteOnboardingCommandHandler(fixture.CreateContext(), currentUser);
+        await handler.Handle(new CompleteOnboardingCommand(), CancellationToken.None);
+
+        // Re-queried through a brand new context, not the one RegisterCommandHandler
+        // wrote through, so this actually proves the change persisted rather than
+        // just reflecting a stale in-memory tracked instance.
+        var user = fixture.CreateContext().Users.Single(u => u.Id == registerResult.User.Id);
+        user.HasCompletedOnboarding.Should().BeTrue();
+    }
 }

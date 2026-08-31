@@ -64,4 +64,11 @@ public sealed class AuthController(ISender sender) : ControllerBase
         var result = await sender.Send(new GetCurrentUserQuery(), cancellationToken);
         return Ok(result);
     }
+
+    [HttpPost("onboarding/complete")]
+    public async Task<IActionResult> CompleteOnboarding(CancellationToken cancellationToken)
+    {
+        await sender.Send(new CompleteOnboardingCommand(), cancellationToken);
+        return Ok();
+    }
 }

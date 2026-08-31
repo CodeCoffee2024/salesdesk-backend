@@ -11,6 +11,8 @@ public sealed class UserDto
     public string Role { get; init; } = string.Empty;
 
     public Guid WorkspaceId { get; init; }
+
+    public bool HasCompletedOnboarding { get; init; }
 }
 
 public sealed class AuthResponseDto
