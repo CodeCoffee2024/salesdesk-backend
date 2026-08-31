@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -32,17 +33,32 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, TokenService>();
         services.AddScoped<IAuditLogger, AuditLogger>();
 
-        // Automated reminders (TASK-025). No transactional-email provider is
-        // configured yet, so IEmailSender logs instead of sending — see
-        // LogEmailSender and docs/research/TASK-DEPLOYMENT.md. IPublicLinkBuilder
-        // needs the deployed frontend's own base URL to build a `/view/{token}`
-        // link from the backend; App:FrontendBaseUrl is intentionally allowed to be
-        // empty (falls back to a relative link) rather than throwing at startup
-        // like Jwt:Secret does, since the reminder engine is opt-in per workspace
-        // and shouldn't block boot in an environment that hasn't set it yet.
-        services.AddSingleton<IEmailSender, LogEmailSender>();
+        // Automated reminders (TASK-025). IPublicLinkBuilder needs the deployed
+        // frontend's own base URL to build a `/view/{token}` link from the backend;
+        // App:FrontendBaseUrl is intentionally allowed to be empty (falls back to a
+        // relative link) rather than throwing at startup like Jwt:Secret does, since
+        // the reminder engine is opt-in per workspace and shouldn't block boot in an
+        // environment that hasn't set it yet.
         services.AddSingleton<IPublicLinkBuilder>(new PublicLinkBuilder(configuration["App:FrontendBaseUrl"] ?? string.Empty));
         services.AddHostedService<ReminderDispatchHostedService>();
+
+        // Email delivery only goes live once Resend:ApiKey is configured —
+        // otherwise the reminder/forgot-password paths fall back to a log-only
+        // sender rather than failing every send in an environment that hasn't
+        // configured email credentials yet. See docs/research/TASK-DEPLOYMENT.md.
+        var resendApiKey = configuration["Resend:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(resendApiKey))
+        {
+            services.AddHttpClient<IEmailSender, ResendEmailSender>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.resend.com/");
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", resendApiKey);
+            });
+        }
+        else
+        {
+            services.AddSingleton<IEmailSender, LogEmailSender>();
+        }
 
         return services;
     }
