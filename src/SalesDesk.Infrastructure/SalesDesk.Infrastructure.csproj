@@ -32,6 +32,7 @@
     <!-- JWT issuance (Auth) — kept at the same 9.0.x line as the JwtBearer package the Api project uses to validate these tokens. -->
     <PackageReference Include="Microsoft.IdentityModel.Tokens" Version="8.16.0" />
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.16.0" />
+    <PackageReference Include="WebPush" Version="1.0.13" />
   </ItemGroup>
 
   <PropertyGroup>

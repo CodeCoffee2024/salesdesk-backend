@@ -21,6 +21,8 @@ public interface IApplicationDbContext
 
     DbSet<User> Users { get; }
 
+    DbSet<PushSubscription> PushSubscriptions { get; }
+
     DbSet<Customer> Customers { get; }
 
     DbSet<Product> Products { get; }

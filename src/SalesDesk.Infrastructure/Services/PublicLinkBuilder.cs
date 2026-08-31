@@ -15,4 +15,7 @@ public sealed class PublicLinkBuilder(string frontendBaseUrl) : IPublicLinkBuild
 
     public string BuildResetPasswordUrl(string rawToken) =>
         $"{frontendBaseUrl.TrimEnd('/')}/reset-password?token={Uri.EscapeDataString(rawToken)}";
+
+    public string BuildDocumentPreviewUrl(Guid documentId) =>
+        $"{frontendBaseUrl.TrimEnd('/')}/documents/{documentId:D}/preview";
 }

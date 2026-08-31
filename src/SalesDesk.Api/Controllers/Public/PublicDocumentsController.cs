@@ -13,6 +13,8 @@ public sealed record SignDocumentRequest(
     SignatureType SignatureType,
     string SignatureImageDataUrl);
 
+public sealed record RequestRevisionRequest(string Feedback);
+
 /// <summary>
 /// The unauthenticated surface a client hits from their document link (TASK-023/024)
 /// — every action here is [AllowAnonymous] and scoped by the document's
@@ -44,6 +46,14 @@ public sealed class PublicDocumentsController(ISender sender) : ControllerBase
             request.SignatureType, request.SignatureImageDataUrl, ipAddress, userAgent);
 
         var result = await sender.Send(command, cancellationToken);
+        return Ok(result);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("{token:guid}/request-revision")]
+    public async Task<ActionResult<PublicDocumentDto>> RequestRevision(Guid token, [FromBody] RequestRevisionRequest request, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new RequestDocumentRevisionCommand(token, request.Feedback), cancellationToken);
         return Ok(result);
     }
 }

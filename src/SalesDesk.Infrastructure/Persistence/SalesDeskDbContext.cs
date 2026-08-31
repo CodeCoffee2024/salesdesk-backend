@@ -16,6 +16,8 @@ public sealed class SalesDeskDbContext(DbContextOptions<SalesDeskDbContext> opti
 
     public DbSet<User> Users => Set<User>();
 
+    public DbSet<PushSubscription> PushSubscriptions => Set<PushSubscription>();
+
     public DbSet<Customer> Customers => Set<Customer>();
 
     public DbSet<Product> Products => Set<Product>();

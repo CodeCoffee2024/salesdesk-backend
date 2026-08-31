@@ -3,6 +3,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SalesDesk.Application.Common.Exceptions;
 using SalesDesk.Application.Common.Interfaces;
+using SalesDesk.Application.Notifications;
 using SalesDesk.Domain.Documents;
 
 namespace SalesDesk.Application.Documents.Public;
@@ -43,7 +44,8 @@ public sealed class SignDocumentCommandValidator : AbstractValidator<SignDocumen
     }
 }
 
-public sealed class SignDocumentCommandHandler(IApplicationDbContext context, IDateTime dateTime)
+public sealed class SignDocumentCommandHandler(
+    IApplicationDbContext context, IDateTime dateTime, WorkspacePushNotifier pushNotifier, IPublicLinkBuilder linkBuilder)
     : IRequestHandler<SignDocumentCommand, PublicDocumentDto>
 {
     public async Task<PublicDocumentDto> Handle(SignDocumentCommand request, CancellationToken cancellationToken)
@@ -75,6 +77,13 @@ public sealed class SignDocumentCommandHandler(IApplicationDbContext context, ID
         await context.SaveChangesAsync(cancellationToken);
 
         var workspace = await context.Workspaces.FirstAsync(w => w.Id == document.WorkspaceId, cancellationToken);
+
+        await pushNotifier.NotifyWorkspaceAsync(
+            document.WorkspaceId,
+            title: $"{document.DocumentNumber} was signed",
+            body: $"{request.SignerName} just signed your {document.Type.ToString().ToLowerInvariant()}.",
+            url: linkBuilder.BuildDocumentPreviewUrl(document.Id),
+            cancellationToken);
 
         return PublicDocumentMapper.ToDto(document, workspace.Name, workspace.LogoUrl);
     }

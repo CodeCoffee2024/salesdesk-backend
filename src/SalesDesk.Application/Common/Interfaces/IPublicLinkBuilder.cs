@@ -11,4 +11,7 @@ public interface IPublicLinkBuilder
     string BuildDocumentUrl(Guid publicToken);
 
     string BuildResetPasswordUrl(string rawToken);
+
+    /// <summary>The authenticated app's document preview page — the link a Web Push notification (TASK-027) sends a workspace user to, as opposed to <see cref="BuildDocumentUrl"/>'s unauthenticated client-facing link.</summary>
+    string BuildDocumentPreviewUrl(Guid documentId);
 }

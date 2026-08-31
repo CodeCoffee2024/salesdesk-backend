@@ -51,6 +51,13 @@ public sealed class Document : Entity
     /// <summary>True once a client has e-signed this document — every mutator below refuses to run while this is set (TASK-024 guardrail: no modifications after signing).</summary>
     public bool IsLocked => Signature is not null;
 
+    /// <summary>Set the first time a client opens the public /view/{token} link — never updated again, so it doubles as the "has this been viewed yet" flag the TASK-027 view-notification trigger fires on exactly once.</summary>
+    public DateTime? FirstViewedAtUtc { get; private set; }
+
+    public string? RevisionFeedback { get; private set; }
+
+    public DateTime? RevisionRequestedAtUtc { get; private set; }
+
     private Document()
     {
         DocumentNumber = string.Empty;
@@ -174,6 +181,39 @@ public sealed class Document : Entity
         Signature = signature;
         Status = DocumentStatus.Accepted;
         return signature;
+    }
+
+    /// <summary>
+    /// Marks the document as opened by a client, the first time only (TASK-027) —
+    /// returns whether this call was the transition, so the caller (which fires a
+    /// push notification on that transition) doesn't notify on every repeat view.
+    /// Deliberately not gated by <see cref="EnsureNotLocked"/>: a signed document
+    /// can still be reopened and viewed, and that's not an edit.
+    /// </summary>
+    public bool RecordFirstView(DateTime viewedAtUtc)
+    {
+        if (FirstViewedAtUtc is not null)
+        {
+            return false;
+        }
+
+        FirstViewedAtUtc = viewedAtUtc;
+        return true;
+    }
+
+    /// <summary>
+    /// Records a client's request for changes from the public document view
+    /// (TASK-027) and moves the document out of Sent/Overdue into
+    /// RevisionRequested — the workspace then re-edits and re-sends rather than
+    /// the client being able to accept a document they've flagged as wrong.
+    /// </summary>
+    public void RequestRevision(string feedback, DateTime requestedAtUtc)
+    {
+        EnsureNotLocked();
+
+        RevisionFeedback = Guard.AgainstNullOrWhiteSpace(feedback, nameof(feedback));
+        RevisionRequestedAtUtc = requestedAtUtc;
+        Status = DocumentStatus.RevisionRequested;
     }
 
     /// <summary>

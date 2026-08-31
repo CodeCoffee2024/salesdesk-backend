@@ -60,6 +60,26 @@ public static class DependencyInjection
             services.AddSingleton<IEmailSender, LogEmailSender>();
         }
 
+        // Web Push (TASK-027) only goes live once a VAPID keypair is configured —
+        // otherwise the view/sign/revision-request notification paths fall back
+        // to a log-only sender. See docs/research/TASK-DEPLOYMENT.md.
+        var vapidPublicKey = configuration["WebPush:VapidPublicKey"];
+        var vapidPrivateKey = configuration["WebPush:VapidPrivateKey"];
+        if (!string.IsNullOrWhiteSpace(vapidPublicKey) && !string.IsNullOrWhiteSpace(vapidPrivateKey))
+        {
+            var vapidSubject = configuration["WebPush:VapidSubject"];
+            var vapidDetails = new WebPush.VapidDetails(
+                string.IsNullOrWhiteSpace(vapidSubject) ? "mailto:ops@example.com" : vapidSubject,
+                vapidPublicKey,
+                vapidPrivateKey);
+            services.AddSingleton(vapidDetails);
+            services.AddSingleton<IPushNotificationSender, WebPushNotificationSender>();
+        }
+        else
+        {
+            services.AddSingleton<IPushNotificationSender, LogPushNotificationSender>();
+        }
+
         return services;
     }
 }

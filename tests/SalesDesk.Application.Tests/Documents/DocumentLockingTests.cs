@@ -1,6 +1,7 @@
 using FluentAssertions;
 using SalesDesk.Application.Documents;
 using SalesDesk.Application.Documents.Public;
+using SalesDesk.Application.Notifications;
 using SalesDesk.Domain.Customers;
 using SalesDesk.Domain.Documents;
 using SalesDesk.Domain.Templates;
@@ -36,7 +37,8 @@ public class DocumentLockingTests
         fixture.Context.Documents.Add(document);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var signHandler = new SignDocumentCommandHandler(fixture.CreateContext(), DateTime);
+        var signHandler = new SignDocumentCommandHandler(
+            fixture.CreateContext(), DateTime, new WorkspacePushNotifier(fixture.CreateContext(), new FakePushNotificationSender()), new FakePublicLinkBuilder());
         await signHandler.Handle(
             new SignDocumentCommand(document.PublicToken, "Maya Chen", "maya@northstar.studio", true, SignatureType.Drawn, "data:image/png;base64,abc==", "203.0.113.5", "Mozilla/5.0"),
             CancellationToken.None);

@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.Extensions.DependencyInjection;
 using SalesDesk.Application.Common.Behaviors;
 using SalesDesk.Application.Common.Mappings;
+using SalesDesk.Application.Notifications;
 
 namespace SalesDesk.Application;
 
@@ -14,6 +15,7 @@ public static class DependencyInjection
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        services.AddScoped<WorkspacePushNotifier>();
 
         // AutoMapper is pinned to 10.0.0 (see the .csproj comment), which predates
         // the AddAutoMapper(assembly) DI helper that later versions bundle — so the

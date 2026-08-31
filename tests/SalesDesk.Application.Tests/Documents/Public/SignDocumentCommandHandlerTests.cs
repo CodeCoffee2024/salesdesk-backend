@@ -1,7 +1,9 @@
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using SalesDesk.Application.Common.Exceptions;
+using SalesDesk.Application.Common.Interfaces;
 using SalesDesk.Application.Documents.Public;
+using SalesDesk.Application.Notifications;
 using SalesDesk.Domain.Customers;
 using SalesDesk.Domain.Documents;
 using SalesDesk.Domain.Templates;
@@ -16,6 +18,9 @@ public class SignDocumentCommandHandlerTests
     private static SignDocumentCommand ValidCommand(Guid token) => new(
         token, "Jane Client", "jane@example.com", AgreedToTerms: true,
         SignatureType.Drawn, "data:image/png;base64,abc==", "203.0.113.5", "Mozilla/5.0");
+
+    private static SignDocumentCommandHandler MakeHandler(IApplicationDbContext context) =>
+        new(context, DateTime, new WorkspacePushNotifier(context, new FakePushNotificationSender()), new FakePublicLinkBuilder());
 
     [Fact]
     public async Task Handle_persists_the_signature_and_locks_the_document()
@@ -33,7 +38,7 @@ public class SignDocumentCommandHandlerTests
         fixture.Context.Documents.Add(document);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new SignDocumentCommandHandler(fixture.CreateContext(), DateTime);
+        var handler = MakeHandler(fixture.CreateContext());
         var result = await handler.Handle(ValidCommand(document.PublicToken), CancellationToken.None);
 
         result.IsSigned.Should().BeTrue();
@@ -59,7 +64,7 @@ public class SignDocumentCommandHandlerTests
     public async Task Handle_throws_NotFoundException_for_an_unknown_token()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var handler = new SignDocumentCommandHandler(fixture.Context, DateTime);
+        var handler = MakeHandler(fixture.Context);
 
         var act = () => handler.Handle(ValidCommand(Guid.NewGuid()), CancellationToken.None);
 
@@ -81,10 +86,10 @@ public class SignDocumentCommandHandlerTests
         fixture.Context.Documents.Add(document);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var firstHandler = new SignDocumentCommandHandler(fixture.CreateContext(), DateTime);
+        var firstHandler = MakeHandler(fixture.CreateContext());
         await firstHandler.Handle(ValidCommand(document.PublicToken), CancellationToken.None);
 
-        var secondHandler = new SignDocumentCommandHandler(fixture.CreateContext(), DateTime);
+        var secondHandler = MakeHandler(fixture.CreateContext());
         var act = () => secondHandler.Handle(ValidCommand(document.PublicToken), CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();

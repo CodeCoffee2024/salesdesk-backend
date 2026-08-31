@@ -9,5 +9,8 @@ public enum DocumentStatus
     Sent,
     Overdue,
     Accepted,
-    Paid
+    Paid,
+
+    /// <summary>A client asked for changes from the public document view (TASK-027) instead of accepting/signing it.</summary>
+    RevisionRequested
 }
