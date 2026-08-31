@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SalesDesk.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SalesDesk.Infrastructure.Persistence;
 namespace SalesDesk.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(SalesDeskDbContext))]
-    partial class SalesDeskDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260827145720_AddDocumentSignature")]
+    partial class AddDocumentSignature
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -243,37 +246,6 @@ namespace SalesDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("document_line_items", (string)null);
                 });
 
-            modelBuilder.Entity("SalesDesk.Domain.Documents.DocumentReminderLog", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid>("DocumentId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("document_id");
-
-                    b.Property<DateTime>("SentAtUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("sent_at_utc");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(30)
-                        .HasColumnType("character varying(30)")
-                        .HasColumnName("type");
-
-                    b.HasKey("Id")
-                        .HasName("pk_document_reminder_logs");
-
-                    b.HasIndex("DocumentId", "Type")
-                        .IsUnique()
-                        .HasDatabaseName("ix_document_reminder_logs_document_id_type");
-
-                    b.ToTable("document_reminder_logs", (string)null);
-                });
-
             modelBuilder.Entity("SalesDesk.Domain.Documents.DocumentSignature", b =>
                 {
                     b.Property<Guid>("Id")
@@ -494,48 +466,6 @@ namespace SalesDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
-            modelBuilder.Entity("SalesDesk.Domain.Workspaces.ReminderSettings", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("CcEmail")
-                        .HasMaxLength(320)
-                        .HasColumnType("character varying(320)")
-                        .HasColumnName("cc_email");
-
-                    b.Property<bool>("InvoiceDueWarningEnabled")
-                        .HasColumnType("boolean")
-                        .HasColumnName("invoice_due_warning_enabled");
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_enabled");
-
-                    b.Property<bool>("OverdueNoticesEnabled")
-                        .HasColumnType("boolean")
-                        .HasColumnName("overdue_notices_enabled");
-
-                    b.Property<bool>("QuoteFollowUpEnabled")
-                        .HasColumnType("boolean")
-                        .HasColumnName("quote_follow_up_enabled");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("workspace_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_reminder_settings_entries");
-
-                    b.HasIndex("WorkspaceId")
-                        .IsUnique()
-                        .HasDatabaseName("ix_reminder_settings_entries_workspace_id");
-
-                    b.ToTable("reminder_settings_entries", (string)null);
-                });
-
             modelBuilder.Entity("SalesDesk.Domain.Workspaces.Workspace", b =>
                 {
                     b.Property<Guid>("Id")
@@ -629,18 +559,6 @@ namespace SalesDesk.Infrastructure.Persistence.Migrations
                     b.Navigation("Product");
                 });
 
-            modelBuilder.Entity("SalesDesk.Domain.Documents.DocumentReminderLog", b =>
-                {
-                    b.HasOne("SalesDesk.Domain.Documents.Document", "Document")
-                        .WithMany()
-                        .HasForeignKey("DocumentId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_document_reminder_logs_documents_document_id");
-
-                    b.Navigation("Document");
-                });
-
             modelBuilder.Entity("SalesDesk.Domain.Documents.DocumentSignature", b =>
                 {
                     b.HasOne("SalesDesk.Domain.Documents.Document", "Document")
@@ -651,16 +569,6 @@ namespace SalesDesk.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_document_signatures_documents_document_id");
 
                     b.Navigation("Document");
-                });
-
-            modelBuilder.Entity("SalesDesk.Domain.Workspaces.ReminderSettings", b =>
-                {
-                    b.HasOne("SalesDesk.Domain.Workspaces.Workspace", null)
-                        .WithMany()
-                        .HasForeignKey("WorkspaceId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_reminder_settings_entries_workspaces_workspace_id");
                 });
 
             modelBuilder.Entity("SalesDesk.Domain.Documents.Document", b =>

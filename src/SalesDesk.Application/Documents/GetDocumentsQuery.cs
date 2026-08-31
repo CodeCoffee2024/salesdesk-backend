@@ -26,6 +26,7 @@ public sealed class GetDocumentsQueryHandler(IApplicationDbContext context, IMap
             .Include(d => d.Customer)
             .Include(d => d.Template)
             .Include(d => d.LineItems)
+            .Include(d => d.Signature)
             .Where(d => d.WorkspaceId == workspaceId);
 
         if (!string.IsNullOrWhiteSpace(request.Type) &&

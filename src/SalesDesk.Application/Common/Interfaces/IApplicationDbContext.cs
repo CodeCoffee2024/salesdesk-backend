@@ -31,6 +31,12 @@ public interface IApplicationDbContext
 
     DbSet<DocumentLineItem> DocumentLineItems { get; }
 
+    DbSet<DocumentSignature> DocumentSignatures { get; }
+
+    DbSet<DocumentReminderLog> DocumentReminderLogs { get; }
+
+    DbSet<ReminderSettings> ReminderSettingsEntries { get; }
+
     DbSet<AuditLog> AuditLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);

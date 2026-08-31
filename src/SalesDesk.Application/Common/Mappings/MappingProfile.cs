@@ -24,6 +24,7 @@ public sealed class MappingProfile : Profile
         CreateMap<Template, TemplateDto>();
 
         CreateMap<DocumentLineItem, DocumentLineItemDto>();
+        CreateMap<DocumentSignature, DocumentSignatureSummaryDto>();
 
         // Customer/Template are required navigations on every persisted Document,
         // so handlers always load them (.Include) before mapping — see

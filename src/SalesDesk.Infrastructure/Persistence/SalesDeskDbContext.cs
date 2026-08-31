@@ -26,6 +26,12 @@ public sealed class SalesDeskDbContext(DbContextOptions<SalesDeskDbContext> opti
 
     public DbSet<DocumentLineItem> DocumentLineItems => Set<DocumentLineItem>();
 
+    public DbSet<DocumentSignature> DocumentSignatures => Set<DocumentSignature>();
+
+    public DbSet<DocumentReminderLog> DocumentReminderLogs => Set<DocumentReminderLog>();
+
+    public DbSet<ReminderSettings> ReminderSettingsEntries => Set<ReminderSettings>();
+
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

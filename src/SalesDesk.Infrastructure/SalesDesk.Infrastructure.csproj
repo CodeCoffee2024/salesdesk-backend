@@ -23,6 +23,8 @@
     <PackageReference Include="EFCore.NamingConventions" Version="9.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.4" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="9.0.4" />
+    <!-- BackgroundService/IHostedService for the reminder dispatch loop (TASK-025). -->
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="9.0.4" />
     <!-- Password hashing (Auth) -->
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <!-- JWT issuance (Auth) — kept at the same 9.0.x line as the JwtBearer package the Api project uses to validate these tokens. -->

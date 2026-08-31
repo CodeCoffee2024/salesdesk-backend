@@ -15,6 +15,14 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
 
         builder.HasIndex(d => d.WorkspaceId);
 
+        builder.Property(d => d.PublicToken)
+            .IsRequired();
+
+        // Looked up directly by an anonymous client hitting /view/{token} (TASK-023/024)
+        // — must be unique and fast, with no workspace scoping possible at that point.
+        builder.HasIndex(d => d.PublicToken)
+            .IsUnique();
+
         builder.Property(d => d.DocumentNumber)
             .HasMaxLength(30)
             .IsRequired();

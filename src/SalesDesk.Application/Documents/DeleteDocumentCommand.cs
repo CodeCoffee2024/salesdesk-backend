@@ -15,8 +15,13 @@ public sealed class DeleteDocumentCommandHandler(IApplicationDbContext context, 
     {
         var workspaceId = currentUser.RequireWorkspaceId();
         var document = await context.Documents
+            .Include(d => d.Signature)
             .FirstOrDefaultAsync(d => d.Id == request.Id && d.WorkspaceId == workspaceId, cancellationToken)
             ?? throw new NotFoundException(nameof(Document), request.Id);
+
+        // TASK-024 guardrail: a signed document is locked from every modification,
+        // deletion included.
+        document.EnsureNotLocked();
 
         // Line items cascade-delete at the database level (see DocumentConfiguration).
         context.Documents.Remove(document);

@@ -240,4 +240,71 @@ public class DocumentTests
         document.Subtotal.Should().Be(0m);
         document.Total.Should().Be(0m);
     }
+
+    [Fact]
+    public void Constructor_assigns_a_distinct_non_empty_public_token()
+    {
+        var first = CreateDocument();
+        var second = CreateDocument();
+
+        first.PublicToken.Should().NotBe(Guid.Empty);
+        first.PublicToken.Should().NotBe(second.PublicToken);
+    }
+
+    [Fact]
+    public void ApplySignature_locks_the_document_and_transitions_it_to_Accepted()
+    {
+        var document = CreateDocument();
+        document.AddLineItem("Research", 1m, 500m);
+
+        var signature = document.ApplySignature(
+            "Jane Client", "jane@example.com", SignatureType.Drawn, "data:image/png;base64,abc==",
+            "203.0.113.5", "Mozilla/5.0", DateTimeOffset.UtcNow);
+
+        document.IsLocked.Should().BeTrue();
+        document.Status.Should().Be(DocumentStatus.Accepted);
+        document.Signature.Should().BeSameAs(signature);
+        signature.DocumentHash.Should().Be(document.ComputeContentHash());
+    }
+
+    [Fact]
+    public void ApplySignature_throws_when_the_document_is_already_signed()
+    {
+        var document = CreateDocument();
+        document.ApplySignature(
+            "Jane Client", "jane@example.com", SignatureType.Typed, "data:image/png;base64,abc==",
+            "203.0.113.5", "Mozilla/5.0", DateTimeOffset.UtcNow);
+
+        var act = () => document.ApplySignature(
+            "Jane Client", "jane@example.com", SignatureType.Typed, "data:image/png;base64,abc==",
+            "203.0.113.5", "Mozilla/5.0", DateTimeOffset.UtcNow);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Theory]
+    [MemberData(nameof(MutatorsRejectedOnceLocked))]
+    public void Mutators_throw_once_the_document_is_locked(Action<Document> mutate)
+    {
+        var document = CreateDocument();
+        document.AddLineItem("Research", 1m, 500m);
+        document.ApplySignature(
+            "Jane Client", "jane@example.com", SignatureType.Drawn, "data:image/png;base64,abc==",
+            "203.0.113.5", "Mozilla/5.0", DateTimeOffset.UtcNow);
+
+        var act = () => mutate(document);
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    public static IEnumerable<object[]> MutatorsRejectedOnceLocked()
+    {
+        yield return [new Action<Document>(d => d.AddLineItem("More work", 1m, 100m))];
+        yield return [new Action<Document>(d => d.UpdateLineItem(d.LineItems.First().Id, "Renamed", 1m, 100m))];
+        yield return [new Action<Document>(d => d.RemoveLineItem(d.LineItems.First().Id))];
+        yield return [new Action<Document>(d => d.ChangeStatus(DocumentStatus.Sent))];
+        yield return [new Action<Document>(d => d.Reschedule(DueDate.AddDays(1)))];
+        yield return [new Action<Document>(d => d.ChangeTemplate(Guid.NewGuid()))];
+        yield return [new Action<Document>(d => d.ReplaceLineItems([new NewLineItem("X", 1m, 1m, null)]))];
+    }
 }

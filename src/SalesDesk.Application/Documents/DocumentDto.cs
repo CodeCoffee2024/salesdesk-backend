@@ -24,9 +24,28 @@ public sealed class DocumentLineItemDto
 /// carries, but reusing one shape for both keeps the mapping profile and
 /// controller simple at this scale.
 /// </summary>
+public sealed class DocumentSignatureSummaryDto
+{
+    public string SignerName { get; init; } = string.Empty;
+
+    public string SignerEmail { get; init; } = string.Empty;
+
+    public DateTimeOffset SignedAtUtc { get; init; }
+
+    /// <summary>Included here (unlike the public DTO, which never needs it) so the authenticated preview's "Download PDF" can embed the real signature image, not just an audit line.</summary>
+    public string SignatureImageDataUrl { get; init; } = string.Empty;
+}
+
 public sealed class DocumentDto
 {
     public Guid Id { get; init; }
+
+    /// <summary>Token for the unauthenticated public link (TASK-023/024) — the app builds `/view/{PublicToken}` from this, never the internal Id.</summary>
+    public Guid PublicToken { get; init; }
+
+    public bool IsLocked { get; init; }
+
+    public DocumentSignatureSummaryDto? Signature { get; init; }
 
     public string DocumentNumber { get; init; } = string.Empty;
 

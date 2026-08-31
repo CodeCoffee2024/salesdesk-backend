@@ -40,6 +40,7 @@ public sealed class UpdateDocumentCommandHandler(IApplicationDbContext context, 
 
         var document = await context.Documents
             .Include(d => d.LineItems)
+            .Include(d => d.Signature)
             .FirstOrDefaultAsync(d => d.Id == request.Id && d.WorkspaceId == workspaceId, cancellationToken)
             ?? throw new NotFoundException(nameof(Document), request.Id);
 
