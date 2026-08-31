@@ -36,5 +36,10 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.CreatedAt)
             .IsRequired();
+
+        builder.Property(u => u.PasswordResetTokenHash)
+            .HasMaxLength(64);
+
+        builder.HasIndex(u => u.PasswordResetTokenHash);
     }
 }

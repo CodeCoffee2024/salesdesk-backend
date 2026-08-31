@@ -11,6 +11,8 @@ public sealed record LoginRequest(string Email, string Password);
 
 public sealed record ForgotPasswordRequest(string Email);
 
+public sealed record ResetPasswordRequest(string Token, string NewPassword);
+
 [ApiController]
 [Route("api/auth")]
 public sealed class AuthController(ISender sender) : ControllerBase
@@ -44,6 +46,16 @@ public sealed class AuthController(ISender sender) : ControllerBase
         // Always 200, regardless of whether the address is registered — see
         // ForgotPasswordCommandHandler.
         return Ok();
+    }
+
+    [AllowAnonymous]
+    [HttpPost("reset-password")]
+    public async Task<ActionResult<AuthResponseDto>> ResetPassword([FromBody] ResetPasswordRequest request, CancellationToken cancellationToken)
+    {
+        var command = new ResetPasswordCommand(request.Token, request.NewPassword);
+        var result = await sender.Send(command, cancellationToken);
+
+        return Ok(result);
     }
 
     [HttpGet("me")]

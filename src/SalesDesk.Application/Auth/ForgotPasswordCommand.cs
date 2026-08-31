@@ -1,5 +1,7 @@
 using FluentValidation;
 using MediatR;
+using Microsoft.EntityFrameworkCore;
+using SalesDesk.Application.Common.Interfaces;
 
 namespace SalesDesk.Application.Auth;
 
@@ -14,12 +16,41 @@ public sealed class ForgotPasswordCommandValidator : AbstractValidator<ForgotPas
 }
 
 /// <summary>
-/// No outbound-email infrastructure exists in this codebase yet, so this is a
-/// deliberate no-op: it always succeeds, whether or not the address belongs to an
-/// account, so the API never reveals which emails are registered. A real reset-link
-/// flow (token issuance + delivery) is future work, not part of TASK-015.
+/// Issues a one-hour password-reset token and emails the link, but only if the
+/// address belongs to an account — either way the handler completes silently and the
+/// controller always returns 200, so the API never reveals which emails are
+/// registered (AC from TASK-015, preserved when this stopped being a no-op).
 /// </summary>
-public sealed class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordCommand>
+public sealed class ForgotPasswordCommandHandler(
+    IApplicationDbContext context, IEmailSender emailSender, IPublicLinkBuilder linkBuilder, IDateTime dateTime)
+    : IRequestHandler<ForgotPasswordCommand>
 {
-    public Task Handle(ForgotPasswordCommand request, CancellationToken cancellationToken) => Task.CompletedTask;
+    public async Task Handle(ForgotPasswordCommand request, CancellationToken cancellationToken)
+    {
+        var normalizedEmail = request.Email.Trim().ToLowerInvariant();
+        var user = await context.Users.SingleOrDefaultAsync(u => u.Email == normalizedEmail, cancellationToken);
+
+        if (user is null)
+        {
+            return;
+        }
+
+        var (rawToken, hash) = PasswordResetTokens.Generate();
+        user.IssuePasswordResetToken(hash, dateTime.UtcNow.UtcDateTime.AddHours(1));
+        await context.SaveChangesAsync(cancellationToken);
+
+        var resetUrl = linkBuilder.BuildResetPasswordUrl(rawToken);
+        await emailSender.SendAsync(
+            new EmailMessage(
+                user.Email,
+                Cc: null,
+                Subject: "Reset your SalesDesk password",
+                HtmlBody: $"""
+                    <p>Hi {user.FullName},</p>
+                    <p>Click the link below to reset your password. This link expires in 1 hour and can only be used once.</p>
+                    <p><a href="{resetUrl}">Reset your password</a></p>
+                    <p>If you didn't request this, you can safely ignore this email.</p>
+                    """),
+            cancellationToken);
+    }
 }
