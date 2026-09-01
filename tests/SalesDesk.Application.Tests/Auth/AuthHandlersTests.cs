@@ -1,9 +1,12 @@
 using FluentAssertions;
+using Microsoft.EntityFrameworkCore;
 using SalesDesk.Application.Auth;
 using SalesDesk.Application.Common.Exceptions;
 using SalesDesk.Application.Common.Interfaces;
 using SalesDesk.Domain.Audit;
+using SalesDesk.Domain.Promotions;
 using SalesDesk.Domain.Users;
+using SalesDesk.Domain.Workspaces;
 using SalesDesk.Infrastructure.Services;
 
 namespace SalesDesk.Application.Tests.Auth;
@@ -389,5 +392,44 @@ public class AuthHandlersTests
         var start = htmlBody.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
         var end = htmlBody.IndexOf('"', start);
         return htmlBody[start..end];
+    }
+
+    [Fact]
+    public async Task Register_grants_the_early_bird_promo_to_an_early_registration()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var handler = CreateRegisterHandler(fixture);
+
+        var result = await handler.Handle(
+            new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
+
+        var workspace = fixture.CreateContext().Workspaces.Single(w => w.Id == result.User.WorkspaceId);
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Premium);
+        workspace.IsEarlyBirdPromo.Should().BeTrue();
+        workspace.SubscriptionEndDate.Should().NotBeNull();
+    }
+
+    [Fact]
+    public async Task Register_falls_back_to_standard_Free_provisioning_once_the_promo_cap_is_reached()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+
+        // Fast-forward straight to "the cap is already reached" rather than
+        // registering 100 accounts — the boundary itself (the 100th vs. the
+        // 101st) is covered by EarlyBirdPromoReservationTests; this test only
+        // needs to prove that registration #101 onward doesn't crash and simply
+        // provisions Free, per TASK-031's graceful-fallback AC.
+        await fixture.CreateContext().Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE promo_counters SET count = {PromoCounter.EarlyBirdCap} WHERE key = {PromoCounter.EarlyBirdPremiumKey}",
+            CancellationToken.None);
+
+        var handler = CreateRegisterHandler(fixture);
+        var result = await handler.Handle(
+            new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
+
+        var workspace = fixture.CreateContext().Workspaces.Single(w => w.Id == result.User.WorkspaceId);
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Free);
+        workspace.IsEarlyBirdPromo.Should().BeFalse();
+        workspace.SubscriptionEndDate.Should().BeNull();
     }
 }

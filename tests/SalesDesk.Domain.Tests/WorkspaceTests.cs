@@ -140,4 +140,27 @@ public class WorkspaceTests
 
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
+
+    [Fact]
+    public void Constructor_defaults_to_Free_with_no_subscription_end_date_and_no_early_bird_promo()
+    {
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Free);
+        workspace.SubscriptionEndDate.Should().BeNull();
+        workspace.IsEarlyBirdPromo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void GrantEarlyBirdPremium_upgrades_to_Premium_expiring_365_days_from_the_given_timestamp()
+    {
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+        var registeredAt = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
+
+        workspace.GrantEarlyBirdPremium(registeredAt);
+
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Premium);
+        workspace.SubscriptionEndDate.Should().Be(registeredAt.AddDays(365));
+        workspace.IsEarlyBirdPromo.Should().BeTrue();
+    }
 }

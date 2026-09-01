@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SalesDesk.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SalesDesk.Infrastructure.Persistence;
 namespace SalesDesk.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(SalesDeskDbContext))]
-    partial class SalesDeskDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901133233_AddSubscriptionPromo")]
+    partial class AddSubscriptionPromo
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -739,10 +742,8 @@ namespace SalesDesk.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("SubscriptionTier")
                         .IsRequired()
-                        .ValueGeneratedOnAdd()
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)")
-                        .HasDefaultValue("Free")
                         .HasColumnName("subscription_tier");
 
                     b.Property<string>("Tagline")

@@ -33,6 +33,12 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
 /// verification token issued in the same save, then gets the verification email —
 /// EmailVerificationBehavior blocks every other mutation for this account until
 /// they follow that link.
+///
+/// TASK-031: before provisioning the workspace, this also tries to claim one of
+/// the first 100 "Early 100 Free Year" promo slots — see
+/// IApplicationDbContext.TryReserveEarlyBirdPromoSlotAsync for why that's safe
+/// under concurrent registrations. A miss (cap already reached) isn't an error:
+/// the workspace is just provisioned as standard Free, same as any other account.
 /// </summary>
 public sealed class RegisterCommandHandler(
     IApplicationDbContext context,
@@ -56,6 +62,16 @@ public sealed class RegisterCommandHandler(
         }
 
         var workspace = new Workspace(request.WorkspaceName, normalizedEmail);
+
+        // TASK-031: reserved before the workspace is even constructed so a
+        // "yes, this is the 100th or earlier account" decision is made exactly
+        // once, atomically, regardless of anything else this handler does — see
+        // TryReserveEarlyBirdPromoSlotAsync's own doc comment.
+        if (await context.TryReserveEarlyBirdPromoSlotAsync(cancellationToken))
+        {
+            workspace.GrantEarlyBirdPremium(dateTime.UtcNow);
+        }
+
         context.Workspaces.Add(workspace);
 
         var user = new User(normalizedEmail, passwordHasher.Hash(request.Password), request.FullName, Role.WorkspaceAdmin, workspace.Id);

@@ -40,6 +40,17 @@ public sealed class WorkspaceConfiguration : IEntityTypeConfiguration<Workspace>
 
         builder.Property(w => w.DocumentQuota);
 
+        builder.Property(w => w.SubscriptionTier)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .HasDefaultValue(SubscriptionTier.Free)
+            .IsRequired();
+
+        builder.Property(w => w.SubscriptionEndDate);
+
+        builder.Property(w => w.IsEarlyBirdPromo)
+            .IsRequired();
+
         builder.Property(w => w.CreatedAt)
             .IsRequired();
     }

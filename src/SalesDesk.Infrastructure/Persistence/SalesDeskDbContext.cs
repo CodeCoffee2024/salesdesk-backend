@@ -4,6 +4,7 @@ using SalesDesk.Domain.Audit;
 using SalesDesk.Domain.Customers;
 using SalesDesk.Domain.Documents;
 using SalesDesk.Domain.Products;
+using SalesDesk.Domain.Promotions;
 using SalesDesk.Domain.Templates;
 using SalesDesk.Domain.Users;
 using SalesDesk.Domain.Workspaces;
@@ -35,6 +36,18 @@ public sealed class SalesDeskDbContext(DbContextOptions<SalesDeskDbContext> opti
     public DbSet<ReminderSettings> ReminderSettingsEntries => Set<ReminderSettings>();
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+
+    public DbSet<PromoCounter> PromoCounters => Set<PromoCounter>();
+
+    /// <inheritdoc cref="IApplicationDbContext.TryReserveEarlyBirdPromoSlotAsync"/>
+    public async Task<bool> TryReserveEarlyBirdPromoSlotAsync(CancellationToken cancellationToken)
+    {
+        var rowsAffected = await Database.ExecuteSqlInterpolatedAsync(
+            $"UPDATE promo_counters SET count = count + 1 WHERE key = {PromoCounter.EarlyBirdPremiumKey} AND count < {PromoCounter.EarlyBirdCap}",
+            cancellationToken);
+
+        return rowsAffected > 0;
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
