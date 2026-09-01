@@ -41,4 +41,6 @@ public sealed class CurrentUserService(IHttpContextAccessor httpContextAccessor)
             return Guid.TryParse(value, out var id) ? id : null;
         }
     }
+
+    public bool IsEmailVerified => bool.TryParse(User?.FindFirstValue("email_verified"), out var verified) && verified;
 }

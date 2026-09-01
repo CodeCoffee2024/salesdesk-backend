@@ -22,16 +22,41 @@ public class AuthHandlersTests
     private static readonly PasswordHasher PasswordHasher = new();
     private static readonly FakeTokenService TokenService = new();
 
+    /// <summary>
+    /// TASK-030 added three constructor params to RegisterCommandHandler (email
+    /// verification's sender/link-builder/clock) that most of these tests don't
+    /// otherwise care about — this keeps the many call sites that only need a
+    /// working registration, not an inspectable verification email, from each
+    /// having to spell out fresh fakes for all three.
+    /// </summary>
+    private static RegisterCommandHandler CreateRegisterHandler(
+        SqliteApplicationDbContextFixture fixture,
+        IApplicationDbContext? context = null,
+        IAuditLogger? auditLogger = null,
+        IEmailSender? emailSender = null,
+        IPublicLinkBuilder? linkBuilder = null,
+        IDateTime? dateTime = null) =>
+        new(
+            context ?? fixture.Context,
+            PasswordHasher,
+            TokenService,
+            fixture.Mapper,
+            auditLogger ?? new FakeAuditLogger(),
+            emailSender ?? new FakeEmailSender(),
+            linkBuilder ?? new FakePublicLinkBuilder(),
+            dateTime ?? new FakeDateTime(DateTimeOffset.UtcNow));
+
     [Fact]
     public async Task Register_creates_a_workspace_and_a_WorkspaceAdmin_user()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var handler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var handler = CreateRegisterHandler(fixture);
 
         var result = await handler.Handle(
             new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         result.User.Role.Should().Be(nameof(Role.WorkspaceAdmin));
+        result.User.IsEmailVerified.Should().BeFalse();
         result.Token.Should().NotBeNullOrEmpty();
         fixture.Context.Workspaces.Should().ContainSingle(w => w.Name == "Northstar Studio");
         fixture.Context.Users.Should().ContainSingle(u => u.Email == "maya@northstar.studio" && u.Role == Role.WorkspaceAdmin);
@@ -42,7 +67,7 @@ public class AuthHandlersTests
     {
         using var fixture = new SqliteApplicationDbContextFixture();
         var auditLogger = new FakeAuditLogger();
-        var handler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, auditLogger);
+        var handler = CreateRegisterHandler(fixture, auditLogger: auditLogger);
 
         var result = await handler.Handle(
             new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
@@ -55,7 +80,7 @@ public class AuthHandlersTests
     public async Task Register_rejects_a_duplicate_email()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var handler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var handler = CreateRegisterHandler(fixture);
         await handler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         var act = () => handler.Handle(
@@ -68,7 +93,7 @@ public class AuthHandlersTests
     public async Task Login_succeeds_with_the_correct_password()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var registerHandler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var registerHandler = CreateRegisterHandler(fixture);
         await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         var loginHandler = new LoginCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper);
@@ -81,7 +106,7 @@ public class AuthHandlersTests
     public async Task Login_rejects_an_incorrect_password()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var registerHandler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var registerHandler = CreateRegisterHandler(fixture);
         await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         var loginHandler = new LoginCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper);
@@ -105,7 +130,7 @@ public class AuthHandlersTests
     public async Task Login_rejects_a_user_whose_workspace_has_been_suspended()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var registerHandler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var registerHandler = CreateRegisterHandler(fixture);
         await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         var workspace = fixture.Context.Workspaces.Single(w => w.Name == "Northstar Studio");
@@ -122,7 +147,7 @@ public class AuthHandlersTests
     public async Task ForgotPassword_emails_a_reset_link_for_a_known_address()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var registerHandler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var registerHandler = CreateRegisterHandler(fixture);
         await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         var emailSender = new FakeEmailSender();
@@ -149,7 +174,7 @@ public class AuthHandlersTests
     public async Task ResetPassword_signs_in_with_a_new_password_given_a_valid_token()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var registerHandler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var registerHandler = CreateRegisterHandler(fixture);
         await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         var emailSender = new FakeEmailSender();
@@ -183,7 +208,7 @@ public class AuthHandlersTests
     public async Task ResetPassword_rejects_an_expired_token()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var registerHandler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var registerHandler = CreateRegisterHandler(fixture);
         await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         var emailSender = new FakeEmailSender();
@@ -204,7 +229,7 @@ public class AuthHandlersTests
     public async Task ResetPassword_rejects_a_token_that_was_already_used()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var registerHandler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var registerHandler = CreateRegisterHandler(fixture);
         await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         var emailSender = new FakeEmailSender();
@@ -234,7 +259,7 @@ public class AuthHandlersTests
     public async Task CompleteOnboarding_marks_the_current_user_as_onboarded()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var registerHandler = new RegisterCommandHandler(fixture.Context, PasswordHasher, TokenService, fixture.Mapper, new FakeAuditLogger());
+        var registerHandler = CreateRegisterHandler(fixture);
         var registerResult = await registerHandler.Handle(
             new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
@@ -249,5 +274,120 @@ public class AuthHandlersTests
         // just reflecting a stale in-memory tracked instance.
         var user = fixture.CreateContext().Users.Single(u => u.Id == registerResult.User.Id);
         user.HasCompletedOnboarding.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Register_sends_a_verification_email_and_starts_unverified()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var emailSender = new FakeEmailSender();
+        var handler = CreateRegisterHandler(fixture, emailSender: emailSender);
+
+        var result = await handler.Handle(
+            new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
+
+        result.User.IsEmailVerified.Should().BeFalse();
+        emailSender.SentMessages.Should().ContainSingle(m => m.To == "maya@northstar.studio" && m.HtmlBody.Contains("auth/verify-email?token="));
+    }
+
+    [Fact]
+    public async Task VerifyEmail_marks_the_account_verified_given_a_valid_token()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var emailSender = new FakeEmailSender();
+        var registerHandler = CreateRegisterHandler(fixture, emailSender: emailSender);
+        await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
+
+        var rawToken = ExtractVerificationToken(emailSender.SentMessages[0].HtmlBody);
+        var verifyHandler = new VerifyEmailCommandHandler(fixture.CreateContext(), TokenService, fixture.Mapper, new FakeDateTime(DateTimeOffset.UtcNow));
+        var result = await verifyHandler.Handle(new VerifyEmailCommand(rawToken), CancellationToken.None);
+
+        result.User.IsEmailVerified.Should().BeTrue();
+
+        var user = fixture.CreateContext().Users.Single(u => u.Email == "maya@northstar.studio");
+        user.IsEmailVerified.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task VerifyEmail_rejects_an_unknown_token()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var verifyHandler = new VerifyEmailCommandHandler(fixture.Context, TokenService, fixture.Mapper, new FakeDateTime(DateTimeOffset.UtcNow));
+
+        var act = () => verifyHandler.Handle(new VerifyEmailCommand("not-a-real-token"), CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [Fact]
+    public async Task VerifyEmail_rejects_an_expired_token()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var emailSender = new FakeEmailSender();
+        var issuedAt = new FakeDateTime(DateTimeOffset.UtcNow);
+        var registerHandler = CreateRegisterHandler(fixture, emailSender: emailSender, dateTime: issuedAt);
+        await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
+
+        var rawToken = ExtractVerificationToken(emailSender.SentMessages[0].HtmlBody);
+        var twentyFiveHoursLater = new FakeDateTime(issuedAt.UtcNow.AddHours(25));
+        var verifyHandler = new VerifyEmailCommandHandler(fixture.CreateContext(), TokenService, fixture.Mapper, twentyFiveHoursLater);
+
+        var act = () => verifyHandler.Handle(new VerifyEmailCommand(rawToken), CancellationToken.None);
+
+        await act.Should().ThrowAsync<UnauthorizedAccessException>();
+    }
+
+    [Fact]
+    public async Task ResendVerificationEmail_sends_a_new_link_for_an_unverified_account()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var registerHandler = CreateRegisterHandler(fixture);
+        await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
+
+        var emailSender = new FakeEmailSender();
+        var resendHandler = new ResendVerificationEmailCommandHandler(fixture.CreateContext(), emailSender, new FakePublicLinkBuilder(), new FakeDateTime(DateTimeOffset.UtcNow));
+
+        await resendHandler.Handle(new ResendVerificationEmailCommand("maya@northstar.studio"), CancellationToken.None);
+
+        emailSender.SentMessages.Should().ContainSingle(m => m.To == "maya@northstar.studio" && m.HtmlBody.Contains("auth/verify-email?token="));
+    }
+
+    [Fact]
+    public async Task ResendVerificationEmail_sends_nothing_for_an_already_verified_account()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var registrationEmailSender = new FakeEmailSender();
+        var registerHandler = CreateRegisterHandler(fixture, emailSender: registrationEmailSender);
+        await registerHandler.Handle(new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
+
+        var rawToken = ExtractVerificationToken(registrationEmailSender.SentMessages[0].HtmlBody);
+        var verifyHandler = new VerifyEmailCommandHandler(fixture.CreateContext(), TokenService, fixture.Mapper, new FakeDateTime(DateTimeOffset.UtcNow));
+        await verifyHandler.Handle(new VerifyEmailCommand(rawToken), CancellationToken.None);
+
+        var resendEmailSender = new FakeEmailSender();
+        var resendHandler = new ResendVerificationEmailCommandHandler(fixture.CreateContext(), resendEmailSender, new FakePublicLinkBuilder(), new FakeDateTime(DateTimeOffset.UtcNow));
+        await resendHandler.Handle(new ResendVerificationEmailCommand("maya@northstar.studio"), CancellationToken.None);
+
+        resendEmailSender.SentMessages.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task ResendVerificationEmail_sends_nothing_for_an_unknown_address()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var emailSender = new FakeEmailSender();
+        var resendHandler = new ResendVerificationEmailCommandHandler(fixture.Context, emailSender, new FakePublicLinkBuilder(), new FakeDateTime(DateTimeOffset.UtcNow));
+
+        await resendHandler.Handle(new ResendVerificationEmailCommand("nobody@northstar.studio"), CancellationToken.None);
+
+        emailSender.SentMessages.Should().BeEmpty();
+    }
+
+    private static string ExtractVerificationToken(string htmlBody)
+    {
+        const string marker = "auth/verify-email?token=";
+        var start = htmlBody.IndexOf(marker, StringComparison.Ordinal) + marker.Length;
+        var end = htmlBody.IndexOf('"', start);
+        return htmlBody[start..end];
     }
 }

@@ -28,7 +28,7 @@ public sealed class ResetPasswordCommandHandler(
 {
     public async Task<AuthResponseDto> Handle(ResetPasswordCommand request, CancellationToken cancellationToken)
     {
-        var tokenHash = PasswordResetTokens.Hash(request.Token);
+        var tokenHash = SecureTokens.Hash(request.Token);
         var user = await context.Users.SingleOrDefaultAsync(u => u.PasswordResetTokenHash == tokenHash, cancellationToken);
 
         if (user is null || !user.TryConsumePasswordResetToken(tokenHash, dateTime.UtcNow.UtcDateTime))

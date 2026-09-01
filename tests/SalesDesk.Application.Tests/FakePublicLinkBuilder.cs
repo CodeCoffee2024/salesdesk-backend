@@ -9,4 +9,6 @@ public sealed class FakePublicLinkBuilder : IPublicLinkBuilder
     public string BuildResetPasswordUrl(string rawToken) => $"https://app.example.test/reset-password?token={rawToken}";
 
     public string BuildDocumentPreviewUrl(Guid documentId) => $"https://app.example.test/documents/{documentId:D}/preview";
+
+    public string BuildVerifyEmailUrl(string rawToken) => $"https://app.example.test/auth/verify-email?token={rawToken}";
 }

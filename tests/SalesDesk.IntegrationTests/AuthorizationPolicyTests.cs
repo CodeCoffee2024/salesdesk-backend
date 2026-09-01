@@ -90,6 +90,11 @@ public class AuthorizationPolicyTests : IClassFixture<SalesDeskApiFactory>
 
         var tokenService = _factory.Services.GetRequiredService<ITokenService>();
         var user = new User($"{role}@northline.studio", "unused-hash", $"Test {role}", role, Guid.NewGuid());
+        // These tests are about role-based policy enforcement (TASK-016), not
+        // TASK-030's email-verification gate — an unverified caller would be
+        // blocked by EmailVerificationBehavior before ever reaching that policy
+        // check, so mark the test user verified to isolate what's under test.
+        user.MarkEmailVerified();
 
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokenService.IssueToken(user).Value);
         return client;

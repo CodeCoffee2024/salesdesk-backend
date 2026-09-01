@@ -13,6 +13,8 @@ public sealed class UserDto
     public Guid WorkspaceId { get; init; }
 
     public bool HasCompletedOnboarding { get; init; }
+
+    public bool IsEmailVerified { get; init; }
 }
 
 public sealed class AuthResponseDto

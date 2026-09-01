@@ -15,6 +15,9 @@ public static class DependencyInjection
         services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(typeof(DependencyInjection).Assembly));
         services.AddValidatorsFromAssembly(typeof(DependencyInjection).Assembly);
         services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+        // Registered after ValidationBehavior — see EmailVerificationBehavior's own
+        // doc comment for why that order matters (malformed requests still 400).
+        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(EmailVerificationBehavior<,>));
         services.AddScoped<WorkspacePushNotifier>();
 
         // AutoMapper is pinned to 10.0.0 (see the .csproj comment), which predates

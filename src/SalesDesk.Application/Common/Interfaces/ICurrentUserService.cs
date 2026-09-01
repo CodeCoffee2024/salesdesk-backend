@@ -15,4 +15,7 @@ public interface ICurrentUserService
     Role? Role { get; }
 
     Guid? WorkspaceId { get; }
+
+    /// <summary>TASK-030: read off the JWT's email_verified claim (refreshed whenever VerifyEmailCommand reissues a token) so EmailVerificationBehavior can gate mutations without a database round-trip per request. False for an unauthenticated caller.</summary>
+    bool IsEmailVerified { get; }
 }

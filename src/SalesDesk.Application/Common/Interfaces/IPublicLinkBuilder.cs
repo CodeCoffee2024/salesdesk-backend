@@ -14,4 +14,7 @@ public interface IPublicLinkBuilder
 
     /// <summary>The authenticated app's document preview page — the link a Web Push notification (TASK-027) sends a workspace user to, as opposed to <see cref="BuildDocumentUrl"/>'s unauthenticated client-facing link.</summary>
     string BuildDocumentPreviewUrl(Guid documentId);
+
+    /// <summary>TASK-030: the link emailed on registration (and on "resend verification") — the frontend's /auth/verify-email page reads the token off the query string and calls the verify-email endpoint.</summary>
+    string BuildVerifyEmailUrl(string rawToken);
 }

@@ -34,6 +34,18 @@ public sealed class User : Entity
     /// </summary>
     public bool HasCompletedOnboarding { get; private set; }
 
+    /// <summary>
+    /// TASK-030: false from the moment an account is registered until the owner
+    /// follows the emailed verification link. Gates access to protected workspace
+    /// routes/mutation actions — see EmailVerificationBehavior in Application.
+    /// </summary>
+    public bool IsEmailVerified { get; private set; }
+
+    /// <summary>SHA-256 hex digest of the current outstanding email-verification token, if any — mirrors <see cref="PasswordResetTokenHash"/>.</summary>
+    public string? EmailVerificationTokenHash { get; private set; }
+
+    public DateTime? EmailVerificationTokenExpiresAtUtc { get; private set; }
+
     private User()
     {
         Email = string.Empty;
@@ -96,5 +108,45 @@ public sealed class User : Entity
         PasswordResetTokenHash = null;
         PasswordResetTokenExpiresAtUtc = null;
         return true;
+    }
+
+    /// <summary>Issuing a new token invalidates whatever's currently outstanding — only the most recently requested verification link ever works. Safe to call again for an already-verified user (e.g. a stale "resend" click); it simply reopens a token that TryConsumeEmailVerificationToken will accept.</summary>
+    public void IssueEmailVerificationToken(string tokenHash, DateTime expiresAtUtc)
+    {
+        EmailVerificationTokenHash = Guard.AgainstNullOrWhiteSpace(tokenHash, nameof(tokenHash));
+        EmailVerificationTokenExpiresAtUtc = expiresAtUtc;
+    }
+
+    /// <summary>
+    /// Validates <paramref name="tokenHash"/> against the outstanding verification
+    /// token and, if it matches and hasn't expired, consumes it (clears the stored
+    /// token so it can't be replayed) and marks the account verified, all in the
+    /// same call. Returns false — leaving state untouched — for a mismatched or
+    /// expired hash, mirroring <see cref="TryConsumePasswordResetToken"/>.
+    /// </summary>
+    public bool TryConsumeEmailVerificationToken(string tokenHash, DateTime nowUtc)
+    {
+        if (EmailVerificationTokenHash is null || EmailVerificationTokenExpiresAtUtc is null)
+        {
+            return false;
+        }
+
+        if (EmailVerificationTokenHash != tokenHash || EmailVerificationTokenExpiresAtUtc < nowUtc)
+        {
+            return false;
+        }
+
+        EmailVerificationTokenHash = null;
+        EmailVerificationTokenExpiresAtUtc = null;
+        IsEmailVerified = true;
+        return true;
+    }
+
+    /// <summary>Marks the account verified without going through the token flow — used to backfill dev/demo seed accounts so they aren't locked out of mutation actions by EmailVerificationBehavior.</summary>
+    public void MarkEmailVerified()
+    {
+        IsEmailVerified = true;
+        EmailVerificationTokenHash = null;
+        EmailVerificationTokenExpiresAtUtc = null;
     }
 }

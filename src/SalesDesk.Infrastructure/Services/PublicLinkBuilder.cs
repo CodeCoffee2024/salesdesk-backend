@@ -18,4 +18,7 @@ public sealed class PublicLinkBuilder(string frontendBaseUrl) : IPublicLinkBuild
 
     public string BuildDocumentPreviewUrl(Guid documentId) =>
         $"{frontendBaseUrl.TrimEnd('/')}/documents/{documentId:D}/preview";
+
+    public string BuildVerifyEmailUrl(string rawToken) =>
+        $"{frontendBaseUrl.TrimEnd('/')}/auth/verify-email?token={Uri.EscapeDataString(rawToken)}";
 }

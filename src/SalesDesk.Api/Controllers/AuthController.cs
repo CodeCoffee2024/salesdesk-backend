@@ -13,6 +13,10 @@ public sealed record ForgotPasswordRequest(string Email);
 
 public sealed record ResetPasswordRequest(string Token, string NewPassword);
 
+public sealed record VerifyEmailRequest(string Token);
+
+public sealed record ResendVerificationRequest(string Email);
+
 [ApiController]
 [Route("api/auth")]
 public sealed class AuthController(ISender sender) : ControllerBase
@@ -56,6 +60,31 @@ public sealed class AuthController(ISender sender) : ControllerBase
         var result = await sender.Send(command, cancellationToken);
 
         return Ok(result);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("verify-email")]
+    public async Task<ActionResult<AuthResponseDto>> VerifyEmail([FromBody] VerifyEmailRequest request, CancellationToken cancellationToken)
+    {
+        var command = new VerifyEmailCommand(request.Token);
+        var result = await sender.Send(command, cancellationToken);
+
+        return Ok(result);
+    }
+
+    // [AllowAnonymous] because this backs two callers: the login page's "request a
+    // new verification link" (never authenticated) and the in-app banner's "Resend
+    // Email" button (already authenticated, but blocked by EmailVerificationBehavior
+    // from every other mutation) — see ResendVerificationEmailCommand.
+    [AllowAnonymous]
+    [HttpPost("resend-verification")]
+    public async Task<IActionResult> ResendVerification([FromBody] ResendVerificationRequest request, CancellationToken cancellationToken)
+    {
+        await sender.Send(new ResendVerificationEmailCommand(request.Email), cancellationToken);
+
+        // Always 200, regardless of whether the address is registered or already
+        // verified — see ResendVerificationEmailCommandHandler.
+        return Ok();
     }
 
     [HttpGet("me")]

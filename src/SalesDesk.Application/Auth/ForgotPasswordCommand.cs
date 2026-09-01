@@ -35,7 +35,7 @@ public sealed class ForgotPasswordCommandHandler(
             return;
         }
 
-        var (rawToken, hash) = PasswordResetTokens.Generate();
+        var (rawToken, hash) = SecureTokens.Generate();
         user.IssuePasswordResetToken(hash, dateTime.UtcNow.UtcDateTime.AddHours(1));
         await context.SaveChangesAsync(cancellationToken);
 

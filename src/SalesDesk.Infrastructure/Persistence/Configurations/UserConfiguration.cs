@@ -41,5 +41,13 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(64);
 
         builder.HasIndex(u => u.PasswordResetTokenHash);
+
+        builder.Property(u => u.IsEmailVerified)
+            .IsRequired();
+
+        builder.Property(u => u.EmailVerificationTokenHash)
+            .HasMaxLength(64);
+
+        builder.HasIndex(u => u.EmailVerificationTokenHash);
     }
 }

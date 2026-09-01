@@ -44,6 +44,10 @@ public sealed class TokenService(IConfiguration configuration) : ITokenService
             new Claim(ClaimTypes.Name, user.FullName),
             new Claim(ClaimTypes.Role, user.Role.ToString()),
             new Claim("workspace_id", user.WorkspaceId.ToString()),
+            // TASK-030: read back by CurrentUserService.IsEmailVerified. Reissued
+            // by VerifyEmailCommand/ResetPasswordCommand/LoginCommand each time, so
+            // it never lags the database by more than the token's own lifetime.
+            new Claim("email_verified", user.IsEmailVerified.ToString()),
             new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
         };
 

@@ -28,9 +28,21 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
 /// workspace's <see cref="Role.WorkspaceAdmin"/> — see TASK-015 AC3. There is
 /// deliberately no separate "create workspace" flow yet; every account gets exactly
 /// one workspace, created here.
+///
+/// TASK-030: the new user starts with IsEmailVerified = false and a 24-hour
+/// verification token issued in the same save, then gets the verification email —
+/// EmailVerificationBehavior blocks every other mutation for this account until
+/// they follow that link.
 /// </summary>
 public sealed class RegisterCommandHandler(
-    IApplicationDbContext context, IPasswordHasher passwordHasher, ITokenService tokenService, IMapper mapper, IAuditLogger auditLogger)
+    IApplicationDbContext context,
+    IPasswordHasher passwordHasher,
+    ITokenService tokenService,
+    IMapper mapper,
+    IAuditLogger auditLogger,
+    IEmailSender emailSender,
+    IPublicLinkBuilder linkBuilder,
+    IDateTime dateTime)
     : IRequestHandler<RegisterCommand, AuthResponseDto>
 {
     public async Task<AuthResponseDto> Handle(RegisterCommand request, CancellationToken cancellationToken)
@@ -47,6 +59,10 @@ public sealed class RegisterCommandHandler(
         context.Workspaces.Add(workspace);
 
         var user = new User(normalizedEmail, passwordHasher.Hash(request.Password), request.FullName, Role.WorkspaceAdmin, workspace.Id);
+
+        var (rawToken, hash) = SecureTokens.Generate();
+        user.IssueEmailVerificationToken(hash, dateTime.UtcNow.UtcDateTime.AddHours(24));
+
         context.Users.Add(user);
 
         await context.SaveChangesAsync(cancellationToken);
@@ -57,6 +73,19 @@ public sealed class RegisterCommandHandler(
             $"Workspace \"{workspace.Name}\" registered by {user.Email}.",
             workspace.Id,
             user.Id,
+            cancellationToken);
+
+        var verifyUrl = linkBuilder.BuildVerifyEmailUrl(rawToken);
+        await emailSender.SendAsync(
+            new EmailMessage(
+                user.Email,
+                Cc: null,
+                Subject: "Verify your SalesDesk email address",
+                HtmlBody: $"""
+                    <p>Hi {user.FullName},</p>
+                    <p>Welcome to SalesDesk! Click the link below to verify your email address. This link expires in 24 hours.</p>
+                    <p><a href="{verifyUrl}">Verify your email</a></p>
+                    """),
             cancellationToken);
 
         var accessToken = tokenService.IssueToken(user);
