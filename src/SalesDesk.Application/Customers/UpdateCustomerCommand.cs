@@ -9,7 +9,7 @@ using SalesDesk.Domain.Customers;
 
 namespace SalesDesk.Application.Customers;
 
-public sealed record UpdateCustomerCommand(Guid Id, string Name, string Company, string Email, string? Phone) : IRequest<CustomerDto>;
+public sealed record UpdateCustomerCommand(Guid Id, string Name, string Company, string Email, string? Phone, string? Country = null) : IRequest<CustomerDto>;
 
 public sealed class UpdateCustomerCommandValidator : AbstractValidator<UpdateCustomerCommand>
 {
@@ -18,6 +18,7 @@ public sealed class UpdateCustomerCommandValidator : AbstractValidator<UpdateCus
         RuleFor(c => c.Name).NotEmpty();
         RuleFor(c => c.Company).NotEmpty();
         RuleFor(c => c.Email).NotEmpty().EmailAddress();
+        RuleFor(c => c.Country).Matches("^[A-Za-z]{2}$").WithMessage("Country must be a 2-letter ISO 3166-1 alpha-2 code.").When(c => c.Country is not null);
     }
 }
 
@@ -31,7 +32,7 @@ public sealed class UpdateCustomerCommandHandler(IApplicationDbContext context, 
             .FirstOrDefaultAsync(c => c.Id == request.Id && c.WorkspaceId == workspaceId, cancellationToken)
             ?? throw new NotFoundException(nameof(Customer), request.Id);
 
-        customer.UpdateDetails(request.Name, request.Company, request.Email, request.Phone);
+        customer.UpdateDetails(request.Name, request.Company, request.Email, request.Phone, request.Country);
         await context.SaveChangesAsync(cancellationToken);
 
         return mapper.Map<CustomerDto>(customer);

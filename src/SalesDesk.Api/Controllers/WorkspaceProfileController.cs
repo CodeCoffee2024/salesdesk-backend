@@ -6,7 +6,7 @@ using SalesDesk.Application.Workspaces;
 
 namespace SalesDesk.Api.Controllers;
 
-public sealed record UpdateWorkspaceProfileRequest(string Name, string Email, string? Tagline, string? Address, string? LogoUrl);
+public sealed record UpdateWorkspaceProfileRequest(string Name, string Email, string? Tagline, string? Address, string? LogoUrl, string Country, string DefaultCurrency);
 
 [ApiController]
 [Route("api/workspace/profile")]
@@ -23,7 +23,7 @@ public sealed class WorkspaceProfileController(ISender sender) : ControllerBase
     [HttpPut]
     public async Task<ActionResult<WorkspaceProfileDto>> Update([FromBody] UpdateWorkspaceProfileRequest request, CancellationToken cancellationToken)
     {
-        var command = new UpdateWorkspaceProfileCommand(request.Name, request.Email, request.Tagline, request.Address, request.LogoUrl);
+        var command = new UpdateWorkspaceProfileCommand(request.Name, request.Email, request.Tagline, request.Address, request.LogoUrl, request.Country, request.DefaultCurrency);
         var result = await sender.Send(command, cancellationToken);
         return Ok(result);
     }

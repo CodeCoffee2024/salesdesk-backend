@@ -32,6 +32,30 @@ public class CustomerTests
         customer.Phone.Should().BeNull();
     }
 
+    [Fact]
+    public void Constructor_allows_country_to_be_omitted()
+    {
+        var customer = new Customer(WorkspaceId, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+
+        customer.Country.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_normalizes_a_provided_country_to_uppercase()
+    {
+        var customer = new Customer(WorkspaceId, "Maya Chen", "Northstar Studio", "maya@northstar.studio", country: "ph");
+
+        customer.Country.Should().Be("PH");
+    }
+
+    [Fact]
+    public void Constructor_rejects_a_malformed_country_code()
+    {
+        var act = () => new Customer(WorkspaceId, "Maya Chen", "Northstar Studio", "maya@northstar.studio", country: "PHL");
+
+        act.Should().Throw<ArgumentException>();
+    }
+
     [Theory]
     [InlineData("", "Northstar Studio", "maya@northstar.studio")]
     [InlineData("Maya Chen", "", "maya@northstar.studio")]
@@ -51,7 +75,7 @@ public class CustomerTests
         var originalId = customer.Id;
         var originalCreatedAt = customer.CreatedAt;
 
-        customer.UpdateDetails("Maya C. Chen", "Northstar Studio LLC", "maya@northstarstudio.com", "+1 415 555 0199");
+        customer.UpdateDetails("Maya C. Chen", "Northstar Studio LLC", "maya@northstarstudio.com", "+1 415 555 0199", "PH");
 
         customer.Id.Should().Be(originalId);
         customer.CreatedAt.Should().Be(originalCreatedAt);
@@ -59,5 +83,6 @@ public class CustomerTests
         customer.Company.Should().Be("Northstar Studio LLC");
         customer.Email.Should().Be("maya@northstarstudio.com");
         customer.Phone.Should().Be("+1 415 555 0199");
+        customer.Country.Should().Be("PH");
     }
 }

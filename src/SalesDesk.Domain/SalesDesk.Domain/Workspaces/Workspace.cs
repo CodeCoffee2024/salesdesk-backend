@@ -19,6 +19,12 @@ public sealed class Workspace : Entity
 
     public string? LogoUrl { get; private set; }
 
+    /// <summary>ISO 3166-1 alpha-2 code (e.g. "US", "DE", "PH") for this workspace's primary country of operation — drives tax-label inference and the default target country for new documents (TASK-029).</summary>
+    public string Country { get; private set; }
+
+    /// <summary>ISO 4217 code (e.g. "USD", "EUR", "PHP") documents default to unless overridden per-document, and the currency dashboard totals are normalized into (TASK-029).</summary>
+    public string DefaultCurrency { get; private set; }
+
     public bool IsActive { get; private set; }
 
     /// <summary>Maximum documents this workspace may issue. Null means unlimited.</summary>
@@ -30,27 +36,41 @@ public sealed class Workspace : Entity
     {
         Name = string.Empty;
         Email = string.Empty;
+        Country = "US";
+        DefaultCurrency = "USD";
     }
 
-    public Workspace(string name, string email, string? tagline = null, string? address = null, string? logoUrl = null, int? documentQuota = 100)
+    public Workspace(
+        string name,
+        string email,
+        string? tagline = null,
+        string? address = null,
+        string? logoUrl = null,
+        int? documentQuota = 100,
+        string country = "US",
+        string defaultCurrency = "USD")
     {
         Name = Guard.AgainstNullOrWhiteSpace(name, nameof(name));
         Email = Guard.AgainstNullOrWhiteSpace(email, nameof(email));
         Tagline = tagline;
         Address = address;
         LogoUrl = logoUrl;
+        Country = Guard.AgainstInvalidIsoCode(country, 2, nameof(country));
+        DefaultCurrency = Guard.AgainstInvalidIsoCode(defaultCurrency, 3, nameof(defaultCurrency));
         IsActive = true;
         DocumentQuota = documentQuota;
         CreatedAt = DateTimeOffset.UtcNow;
     }
 
-    public void UpdateProfile(string name, string email, string? tagline, string? address, string? logoUrl)
+    public void UpdateProfile(string name, string email, string? tagline, string? address, string? logoUrl, string country, string defaultCurrency)
     {
         Name = Guard.AgainstNullOrWhiteSpace(name, nameof(name));
         Email = Guard.AgainstNullOrWhiteSpace(email, nameof(email));
         Tagline = tagline;
         Address = address;
         LogoUrl = logoUrl;
+        Country = Guard.AgainstInvalidIsoCode(country, 2, nameof(country));
+        DefaultCurrency = Guard.AgainstInvalidIsoCode(defaultCurrency, 3, nameof(defaultCurrency));
     }
 
     /// <summary>Blocks every user of this workspace from signing in — see LoginCommandHandler.</summary>

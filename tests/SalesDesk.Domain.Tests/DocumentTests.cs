@@ -242,6 +242,65 @@ public class DocumentTests
     }
 
     [Fact]
+    public void Constructor_defaults_currency_to_USD_with_no_client_country()
+    {
+        var document = CreateDocument();
+
+        document.Currency.Should().Be("USD");
+        document.ClientCountry.Should().BeNull();
+    }
+
+    [Fact]
+    public void Constructor_normalizes_currency_and_client_country_to_uppercase()
+    {
+        var document = new Document(WorkspaceId, "QUO-2026-035", DocumentType.Quote, CustomerId, TemplateId, IssueDate, DueDate, currency: "eur", clientCountry: "de");
+
+        document.Currency.Should().Be("EUR");
+        document.ClientCountry.Should().Be("DE");
+    }
+
+    [Fact]
+    public void Constructor_rejects_a_malformed_currency_code()
+    {
+        var act = () => new Document(WorkspaceId, "QUO-2026-035", DocumentType.Quote, CustomerId, TemplateId, IssueDate, DueDate, currency: "EU");
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Fact]
+    public void ChangeCurrency_updates_currency_and_client_country()
+    {
+        var document = CreateDocument();
+
+        document.ChangeCurrency("GBP", "GB");
+
+        document.Currency.Should().Be("GBP");
+        document.ClientCountry.Should().Be("GB");
+    }
+
+    [Fact]
+    public void ChangeCurrency_allows_clearing_the_client_country_override()
+    {
+        var document = new Document(WorkspaceId, "QUO-2026-035", DocumentType.Quote, CustomerId, TemplateId, IssueDate, DueDate, clientCountry: "DE");
+
+        document.ChangeCurrency("USD", null);
+
+        document.ClientCountry.Should().BeNull();
+    }
+
+    [Fact]
+    public void ComputeContentHash_changes_when_currency_changes()
+    {
+        var document = CreateDocument();
+        document.AddLineItem("Research", 1m, 500m);
+        var originalHash = document.ComputeContentHash();
+
+        document.ChangeCurrency("EUR", null);
+
+        document.ComputeContentHash().Should().NotBe(originalHash);
+    }
+
+    [Fact]
     public void Constructor_assigns_a_distinct_non_empty_public_token()
     {
         var first = CreateDocument();
@@ -305,6 +364,7 @@ public class DocumentTests
         yield return [new Action<Document>(d => d.ChangeStatus(DocumentStatus.Sent))];
         yield return [new Action<Document>(d => d.Reschedule(DueDate.AddDays(1)))];
         yield return [new Action<Document>(d => d.ChangeTemplate(Guid.NewGuid()))];
+        yield return [new Action<Document>(d => d.ChangeCurrency("EUR", "DE"))];
         yield return [new Action<Document>(d => d.ReplaceLineItems([new NewLineItem("X", 1m, 1m, null)]))];
     }
 }

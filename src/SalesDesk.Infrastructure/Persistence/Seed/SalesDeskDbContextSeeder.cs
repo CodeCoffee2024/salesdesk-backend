@@ -27,21 +27,33 @@ public static class SalesDeskDbContextSeeder
             return;
         }
 
+        // Northline operates out of the Philippines (TASK-029) — its default
+        // currency/country drive tax-label inference and the fallback for any
+        // document that doesn't itself override Currency/ClientCountry.
         var workspace = new Workspace(
             "Northline",
             "hello@northline.studio",
             tagline: "Creative studio",
-            address: "14 Rizal Avenue, Makati, Metro Manila");
+            address: "14 Rizal Avenue, Makati, Metro Manila",
+            country: "PH",
+            defaultCurrency: "PHP");
 
         // Dev-only login so a fresh checkout can sign in immediately:
         // admin@northline.studio / Password123!
         var workspaceAdmin = new User(
             "admin@northline.studio", passwordHasher.Hash("Password123!"), "Jordan Reyes", Role.WorkspaceAdmin, workspace.Id);
+        // TASK-030: seeded/dev accounts start pre-verified so a fresh checkout can
+        // exercise every mutation immediately, without needing a real inbox to
+        // click a verification link.
+        workspaceAdmin.MarkEmailVerified();
 
-        var mayaChen = new Customer(workspace.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
-        var andreSantos = new Customer(workspace.Id, "Andre Santos", "Santos & Co.", "andre@santosco.ph");
-        var priyaNair = new Customer(workspace.Id, "Priya Nair", "Goodform Labs", "priya@goodform.io");
-        var eliTurner = new Customer(workspace.Id, "Eli Turner", "Fieldwork Goods", "eli@fieldworkgoods.com");
+        // Country set on each customer (TASK-029) — Andre and Maya are local clients,
+        // Priya and Eli are international, so their documents' ClientCountry override
+        // has somewhere real to default from.
+        var mayaChen = new Customer(workspace.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio", country: "PH");
+        var andreSantos = new Customer(workspace.Id, "Andre Santos", "Santos & Co.", "andre@santosco.ph", country: "PH");
+        var priyaNair = new Customer(workspace.Id, "Priya Nair", "Goodform Labs", "priya@goodform.io", country: "IN");
+        var eliTurner = new Customer(workspace.Id, "Eli Turner", "Fieldwork Goods", "eli@fieldworkgoods.com", country: "US");
 
         var brandIdentitySprint = new Product(
             workspace.Id, "Brand identity sprint", 4200m, ProductUnit.Project,
@@ -69,33 +81,37 @@ public static class SalesDeskDbContextSeeder
             workspace.Id, "Friendly Quote", TemplateTargetType.QuotesOnly,
             "A welcoming quote format with room for context.", "#8B5FBF");
 
+        // Currency/ClientCountry (TASK-029): domestic documents (Maya, Andre) inherit
+        // the workspace's PHP default; Priya's and Eli's are deliberately overridden
+        // to their own currencies/countries, so the seeded data actually exercises
+        // the per-document override and the dashboard's cross-currency conversion.
         var invoice014 = new Document(
             workspace.Id, "INV-2026-014", DocumentType.Invoice, mayaChen.Id, studioStandard.Id,
-            new DateOnly(2026, 8, 12), new DateOnly(2026, 8, 26));
+            new DateOnly(2026, 8, 12), new DateOnly(2026, 8, 26), currency: "PHP", clientCountry: "PH");
         invoice014.AddLineItem("Brand identity sprint", 1m, 4200m, brandIdentitySprint.Id);
         invoice014.ChangeStatus(DocumentStatus.Paid);
 
         var quote028 = new Document(
             workspace.Id, "QUO-2026-028", DocumentType.Quote, andreSantos.Id, friendlyQuote.Id,
-            new DateOnly(2026, 8, 10), new DateOnly(2026, 8, 24));
+            new DateOnly(2026, 8, 10), new DateOnly(2026, 8, 24), currency: "PHP", clientCountry: "PH");
         quote028.AddLineItem("Web design & build", 1m, 6800m, webDesignAndBuild.Id);
         quote028.ChangeStatus(DocumentStatus.Sent);
 
         var invoice013 = new Document(
             workspace.Id, "INV-2026-013", DocumentType.Invoice, priyaNair.Id, studioStandard.Id,
-            new DateOnly(2026, 7, 28), new DateOnly(2026, 8, 11));
+            new DateOnly(2026, 7, 28), new DateOnly(2026, 8, 11), currency: "INR", clientCountry: "IN");
         invoice013.AddLineItem("Monthly creative retainer", 1m, 2400m, monthlyCreativeRetainer.Id);
         invoice013.ChangeStatus(DocumentStatus.Overdue);
 
         var quote027 = new Document(
             workspace.Id, "QUO-2026-027", DocumentType.Quote, eliTurner.Id, modernMinimal.Id,
-            new DateOnly(2026, 7, 24), new DateOnly(2026, 8, 7));
+            new DateOnly(2026, 7, 24), new DateOnly(2026, 8, 7), currency: "USD", clientCountry: "US");
         quote027.AddLineItem("Art direction", 3m, 950m, artDirection.Id);
         quote027.ChangeStatus(DocumentStatus.Accepted);
 
         var invoice012 = new Document(
             workspace.Id, "INV-2026-012", DocumentType.Invoice, mayaChen.Id, studioStandard.Id,
-            new DateOnly(2026, 7, 18), new DateOnly(2026, 8, 1));
+            new DateOnly(2026, 7, 18), new DateOnly(2026, 8, 1), currency: "PHP", clientCountry: "PH");
         invoice012.AddLineItem("Brand identity sprint", 1m, 2400m, brandIdentitySprint.Id);
         invoice012.ChangeStatus(DocumentStatus.Sent);
 
@@ -107,6 +123,7 @@ public static class SalesDeskDbContextSeeder
         var platformWorkspace = new Workspace("SalesDesk HQ", "ops@salesdesk.app", tagline: "Platform operations", documentQuota: null);
         var systemAdmin = new User(
             "superadmin@salesdesk.app", passwordHasher.Hash("Password123!"), "Sam Rivera", Role.SystemAdmin, platformWorkspace.Id);
+        systemAdmin.MarkEmailVerified();
 
         // Two more lightweight demo tenants so the admin console's workspace
         // directory has more than one row to search/inspect: one sitting right at
@@ -118,6 +135,7 @@ public static class SalesDeskDbContextSeeder
         var atQuotaWorkspace = new Workspace("Fieldwork Collective", "hello@fieldworkcollective.com", documentQuota: 5);
         var atQuotaAdmin = new User(
             "admin@fieldworkcollective.com", passwordHasher.Hash("Password123!"), "Casey Okafor", Role.WorkspaceAdmin, atQuotaWorkspace.Id);
+        atQuotaAdmin.MarkEmailVerified();
         var atQuotaCustomer = new Customer(atQuotaWorkspace.Id, "Nia Osei", "Harborlight Co.", "nia@harborlight.co");
         var atQuotaTemplate = new Template(atQuotaWorkspace.Id, "Collective Standard", isDefault: true);
         var atQuotaDocuments = Enumerable.Range(1, 5)
@@ -135,6 +153,7 @@ public static class SalesDeskDbContextSeeder
         suspendedWorkspace.Suspend();
         var suspendedAdmin = new User(
             "admin@driftwoodstudio.com", passwordHasher.Hash("Password123!"), "Robin Ashworth", Role.WorkspaceAdmin, suspendedWorkspace.Id);
+        suspendedAdmin.MarkEmailVerified();
 
         context.Workspaces.Add(workspace);
         context.Users.Add(workspaceAdmin);

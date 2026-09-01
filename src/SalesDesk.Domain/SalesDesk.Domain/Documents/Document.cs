@@ -44,6 +44,12 @@ public sealed class Document : Entity
 
     public decimal Total { get; private set; }
 
+    /// <summary>ISO 4217 code this document is priced in — defaults to the issuing workspace's DefaultCurrency at creation but can be overridden per-document for international clients (TASK-029). Amounts are always rendered via Intl.NumberFormat on the frontend, never a hardcoded symbol table.</summary>
+    public string Currency { get; private set; }
+
+    /// <summary>Optional ISO 3166-1 alpha-2 override of the client's country for this document — defaults to the customer's own country (falling back to the workspace's operating country) but can target a different location per-document (TASK-029).</summary>
+    public string? ClientCountry { get; private set; }
+
     public IReadOnlyCollection<DocumentLineItem> LineItems => _lineItems.AsReadOnly();
 
     public DocumentSignature? Signature { get; private set; }
@@ -61,9 +67,19 @@ public sealed class Document : Entity
     private Document()
     {
         DocumentNumber = string.Empty;
+        Currency = "USD";
     }
 
-    public Document(Guid workspaceId, string documentNumber, DocumentType type, Guid customerId, Guid templateId, DateOnly issueDate, DateOnly dueDate)
+    public Document(
+        Guid workspaceId,
+        string documentNumber,
+        DocumentType type,
+        Guid customerId,
+        Guid templateId,
+        DateOnly issueDate,
+        DateOnly dueDate,
+        string currency = "USD",
+        string? clientCountry = null)
     {
         if (dueDate < issueDate)
         {
@@ -79,6 +95,8 @@ public sealed class Document : Entity
         IssueDate = issueDate;
         DueDate = dueDate;
         Status = DocumentStatus.Draft;
+        Currency = Guard.AgainstInvalidIsoCode(currency, 3, nameof(currency));
+        ClientCountry = Guard.AgainstInvalidIsoCodeOrNull(clientCountry, 2, nameof(clientCountry));
     }
 
     public DocumentLineItem AddLineItem(string description, decimal quantity, decimal unitPrice, Guid? productId = null)
@@ -131,6 +149,14 @@ public sealed class Document : Entity
     {
         EnsureNotLocked();
         TemplateId = Guard.AgainstEmpty(templateId, nameof(templateId));
+    }
+
+    /// <summary>Overrides the currency and/or target client country for this document (TASK-029) — e.g. issuing a quote in EUR to a German client from a USD-default workspace.</summary>
+    public void ChangeCurrency(string currency, string? clientCountry)
+    {
+        EnsureNotLocked();
+        Currency = Guard.AgainstInvalidIsoCode(currency, 3, nameof(currency));
+        ClientCountry = Guard.AgainstInvalidIsoCodeOrNull(clientCountry, 2, nameof(clientCountry));
     }
 
     /// <summary>
@@ -228,6 +254,7 @@ public sealed class Document : Entity
         builder.Append(DocumentNumber).Append('|').Append(Type).Append('|')
             .Append(CustomerId).Append('|').Append(TemplateId).Append('|')
             .Append(IssueDate.ToString("O")).Append('|').Append(DueDate.ToString("O")).Append('|')
+            .Append(Currency).Append('|')
             .Append(Subtotal.ToString(CultureInfo.InvariantCulture)).Append('|')
             .Append(Total.ToString(CultureInfo.InvariantCulture));
 

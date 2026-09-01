@@ -48,7 +48,7 @@ public class WorkspaceTests
         var workspace = new Workspace("Northline", "hello@northline.studio");
         var originalId = workspace.Id;
 
-        workspace.UpdateProfile("Northline Studio", "contact@northline.studio", "Brand & web", "New address", "https://cdn.example.com/logo2.png");
+        workspace.UpdateProfile("Northline Studio", "contact@northline.studio", "Brand & web", "New address", "https://cdn.example.com/logo2.png", "DE", "EUR");
 
         workspace.Id.Should().Be(originalId);
         workspace.Name.Should().Be("Northline Studio");
@@ -56,6 +56,48 @@ public class WorkspaceTests
         workspace.Tagline.Should().Be("Brand & web");
         workspace.Address.Should().Be("New address");
         workspace.LogoUrl.Should().Be("https://cdn.example.com/logo2.png");
+        workspace.Country.Should().Be("DE");
+        workspace.DefaultCurrency.Should().Be("EUR");
+    }
+
+    [Fact]
+    public void Constructor_defaults_country_and_currency_to_US_and_USD()
+    {
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+
+        workspace.Country.Should().Be("US");
+        workspace.DefaultCurrency.Should().Be("USD");
+    }
+
+    [Fact]
+    public void Constructor_normalizes_country_and_currency_to_uppercase()
+    {
+        var workspace = new Workspace("Northline", "hello@northline.studio", country: "ph", defaultCurrency: "php");
+
+        workspace.Country.Should().Be("PH");
+        workspace.DefaultCurrency.Should().Be("PHP");
+    }
+
+    [Theory]
+    [InlineData("USA")]
+    [InlineData("U")]
+    [InlineData("12")]
+    public void Constructor_rejects_a_malformed_country_code(string country)
+    {
+        var act = () => new Workspace("Northline", "hello@northline.studio", country: country);
+
+        act.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("US")]
+    [InlineData("USDD")]
+    [InlineData("123")]
+    public void Constructor_rejects_a_malformed_currency_code(string currency)
+    {
+        var act = () => new Workspace("Northline", "hello@northline.studio", defaultCurrency: currency);
+
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]

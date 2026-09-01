@@ -44,7 +44,12 @@ public sealed class ConvertQuoteToInvoiceCommandHandler(IApplicationDbContext co
         var dueDate = quote.DueDate >= issueDate ? quote.DueDate : issueDate.AddDays(14);
 
         var documentNumber = await DocumentNumbering.GenerateNextAsync(context, workspaceId, DocumentType.Invoice, issueDate, cancellationToken);
-        var invoice = new Document(workspaceId, documentNumber, DocumentType.Invoice, quote.CustomerId, quote.TemplateId, issueDate, dueDate);
+        // Carries the quote's currency/target-country override forward (TASK-029) —
+        // an invoice for an international client shouldn't silently revert to the
+        // workspace's default currency just because it started life as a quote.
+        var invoice = new Document(
+            workspaceId, documentNumber, DocumentType.Invoice, quote.CustomerId, quote.TemplateId, issueDate, dueDate,
+            quote.Currency, quote.ClientCountry);
 
         foreach (var item in quote.LineItems)
         {

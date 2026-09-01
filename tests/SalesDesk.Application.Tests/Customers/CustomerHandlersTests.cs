@@ -87,6 +87,35 @@ public class CustomerHandlersTests
     }
 
     [Fact]
+    public async Task CreateCustomer_persists_the_provided_country()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var handler = new CreateCustomerCommandHandler(fixture.Context, fixture.Mapper, CurrentUser);
+
+        var result = await handler.Handle(
+            new CreateCustomerCommand("Priya Nair", "Goodform Labs", "priya@goodform.io", null, "IN"),
+            CancellationToken.None);
+
+        result.Country.Should().Be("IN");
+    }
+
+    [Fact]
+    public async Task UpdateCustomer_changes_the_country()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var customer = new Customer(WorkspaceId, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+        fixture.Context.Customers.Add(customer);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new UpdateCustomerCommandHandler(fixture.Context, fixture.Mapper, CurrentUser);
+        var result = await handler.Handle(
+            new UpdateCustomerCommand(customer.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio", null, "PH"),
+            CancellationToken.None);
+
+        result.Country.Should().Be("PH");
+    }
+
+    [Fact]
     public async Task UpdateCustomer_throws_NotFoundException_for_an_unknown_id()
     {
         using var fixture = new SqliteApplicationDbContextFixture();

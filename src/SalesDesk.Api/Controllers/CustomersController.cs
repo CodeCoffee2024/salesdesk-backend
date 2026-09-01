@@ -6,9 +6,9 @@ using SalesDesk.Application.Customers;
 
 namespace SalesDesk.Api.Controllers;
 
-public sealed record CreateCustomerRequest(string Name, string Company, string Email, string? Phone);
+public sealed record CreateCustomerRequest(string Name, string Company, string Email, string? Phone, string? Country = null);
 
-public sealed record UpdateCustomerRequest(string Name, string Company, string Email, string? Phone);
+public sealed record UpdateCustomerRequest(string Name, string Company, string Email, string? Phone, string? Country = null);
 
 [ApiController]
 [Route("api/customers")]
@@ -25,7 +25,7 @@ public sealed class CustomersController(ISender sender) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<CustomerDto>> Create([FromBody] CreateCustomerRequest request, CancellationToken cancellationToken)
     {
-        var command = new CreateCustomerCommand(request.Name, request.Company, request.Email, request.Phone);
+        var command = new CreateCustomerCommand(request.Name, request.Company, request.Email, request.Phone, request.Country);
         var result = await sender.Send(command, cancellationToken);
 
         return Created($"/api/customers/{result.Id}", result);
@@ -35,7 +35,7 @@ public sealed class CustomersController(ISender sender) : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<CustomerDto>> Update(Guid id, [FromBody] UpdateCustomerRequest request, CancellationToken cancellationToken)
     {
-        var command = new UpdateCustomerCommand(id, request.Name, request.Company, request.Email, request.Phone);
+        var command = new UpdateCustomerCommand(id, request.Name, request.Company, request.Email, request.Phone, request.Country);
         var result = await sender.Send(command, cancellationToken);
 
         return Ok(result);

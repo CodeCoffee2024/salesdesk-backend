@@ -32,7 +32,9 @@ public sealed record CreateDocumentCommand(
     Guid CustomerId,
     Guid TemplateId,
     DateOnly DueDate,
-    List<CreateDocumentLineItemRequest> LineItems) : IRequest<DocumentDto>;
+    List<CreateDocumentLineItemRequest> LineItems,
+    string? Currency = null,
+    string? ClientCountry = null) : IRequest<DocumentDto>;
 
 public sealed class CreateDocumentCommandValidator : AbstractValidator<CreateDocumentCommand>
 {
@@ -41,6 +43,11 @@ public sealed class CreateDocumentCommandValidator : AbstractValidator<CreateDoc
         RuleFor(c => c.CustomerId).NotEmpty();
         RuleFor(c => c.TemplateId).NotEmpty();
         RuleForEach(c => c.LineItems).SetValidator(new CreateDocumentLineItemRequestValidator());
+
+        // Optional overrides (TASK-029) — when omitted, the handler defaults them
+        // from the customer/workspace, so only validate shape when actually supplied.
+        RuleFor(c => c.Currency).Matches("^[A-Za-z]{3}$").WithMessage("Currency must be a 3-letter ISO 4217 code.").When(c => c.Currency is not null);
+        RuleFor(c => c.ClientCountry).Matches("^[A-Za-z]{2}$").WithMessage("Client country must be a 2-letter ISO 3166-1 alpha-2 code.").When(c => c.ClientCountry is not null);
     }
 }
 
@@ -59,10 +66,18 @@ public sealed class CreateDocumentCommandHandler(IApplicationDbContext context, 
             .FirstOrDefaultAsync(t => t.Id == request.TemplateId && t.WorkspaceId == workspaceId, cancellationToken)
             ?? throw new NotFoundException(nameof(Template), request.TemplateId);
 
+        // Not every caller (e.g. some tests) seeds a Workspace row for the current
+        // workspace id — fall back to the global defaults rather than throwing, the
+        // same way an unset Currency/ClientCountry override falls back below.
+        var workspace = await context.Workspaces.FirstOrDefaultAsync(w => w.Id == workspaceId, cancellationToken);
+
+        var currency = request.Currency ?? workspace?.DefaultCurrency ?? "USD";
+        var clientCountry = request.ClientCountry ?? customer.Country ?? workspace?.Country;
+
         var issueDate = DateOnly.FromDateTime(dateTime.UtcNow.Date);
         var documentNumber = await DocumentNumbering.GenerateNextAsync(context, workspaceId, request.Type, issueDate, cancellationToken);
 
-        var document = new Document(workspaceId, documentNumber, request.Type, customer.Id, template.Id, issueDate, request.DueDate);
+        var document = new Document(workspaceId, documentNumber, request.Type, customer.Id, template.Id, issueDate, request.DueDate, currency, clientCountry);
 
         foreach (var item in request.LineItems)
         {

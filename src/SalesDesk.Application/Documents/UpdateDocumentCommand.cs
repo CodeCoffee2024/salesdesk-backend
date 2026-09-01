@@ -20,7 +20,9 @@ public sealed record UpdateDocumentCommand(
     Guid TemplateId,
     DateOnly DueDate,
     DocumentStatus Status,
-    List<CreateDocumentLineItemRequest> LineItems) : IRequest<DocumentDto>;
+    List<CreateDocumentLineItemRequest> LineItems,
+    string? Currency = null,
+    string? ClientCountry = null) : IRequest<DocumentDto>;
 
 public sealed class UpdateDocumentCommandValidator : AbstractValidator<UpdateDocumentCommand>
 {
@@ -28,6 +30,11 @@ public sealed class UpdateDocumentCommandValidator : AbstractValidator<UpdateDoc
     {
         RuleFor(c => c.TemplateId).NotEmpty();
         RuleForEach(c => c.LineItems).SetValidator(new CreateDocumentLineItemRequestValidator());
+
+        // Null means "leave the document's current currency/country untouched" —
+        // see UpdateDocumentCommandHandler (TASK-029).
+        RuleFor(c => c.Currency).Matches("^[A-Za-z]{3}$").WithMessage("Currency must be a 3-letter ISO 4217 code.").When(c => c.Currency is not null);
+        RuleFor(c => c.ClientCountry).Matches("^[A-Za-z]{2}$").WithMessage("Client country must be a 2-letter ISO 3166-1 alpha-2 code.").When(c => c.ClientCountry is not null);
     }
 }
 
@@ -53,6 +60,7 @@ public sealed class UpdateDocumentCommandHandler(IApplicationDbContext context, 
         document.ChangeTemplate(request.TemplateId);
         document.Reschedule(request.DueDate);
         document.ChangeStatus(request.Status);
+        document.ChangeCurrency(request.Currency ?? document.Currency, request.ClientCountry ?? document.ClientCountry);
         document.ReplaceLineItems(request.LineItems.Select(item =>
             new NewLineItem(item.Description, item.Quantity, item.UnitPrice, item.ProductId)));
 

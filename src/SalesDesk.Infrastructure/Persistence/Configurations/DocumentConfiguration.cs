@@ -58,6 +58,13 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
             .HasColumnType("decimal(18,2)")
             .IsRequired();
 
+        builder.Property(d => d.Currency)
+            .HasMaxLength(3)
+            .IsRequired();
+
+        builder.Property(d => d.ClientCountry)
+            .HasMaxLength(2);
+
         // Restrict, not cascade: deleting a customer or template must not silently
         // wipe out financial records that reference it.
         builder.HasOne(d => d.Customer)

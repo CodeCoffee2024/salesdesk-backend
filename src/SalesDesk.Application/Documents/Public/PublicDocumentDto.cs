@@ -31,6 +31,12 @@ public sealed class PublicDocumentDto
 
     public decimal Total { get; init; }
 
+    /// <summary>ISO 4217 code the client portal formats amounts in via Intl.NumberFormat (TASK-029).</summary>
+    public string Currency { get; init; } = "USD";
+
+    /// <summary>Optional ISO 3166-1 alpha-2 target country, used to pick the display locale alongside Currency (TASK-029).</summary>
+    public string? ClientCountry { get; init; }
+
     public List<DocumentLineItemDto> LineItems { get; init; } = [];
 
     public bool IsSigned { get; init; }

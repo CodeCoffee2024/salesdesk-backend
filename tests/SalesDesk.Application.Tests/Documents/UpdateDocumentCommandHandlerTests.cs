@@ -56,6 +56,43 @@ public class UpdateDocumentCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_leaves_currency_and_client_country_unchanged_when_not_provided()
+    {
+        var (fixture, documentId, otherTemplateId) = await SeedAsync();
+        using var _1 = fixture;
+        var handler = new UpdateDocumentCommandHandler(fixture.CreateContext(), fixture.Mapper, CurrentUser);
+
+        var command = new UpdateDocumentCommand(
+            documentId, otherTemplateId, new DateOnly(2026, 9, 20), DocumentStatus.Sent,
+            [new CreateDocumentLineItemRequest("Design review", 2m, 300m, null)]);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // Documents constructed directly (as SeedAsync does) default to USD/null.
+        result.Currency.Should().Be("USD");
+        result.ClientCountry.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_overrides_currency_and_client_country_when_provided()
+    {
+        var (fixture, documentId, otherTemplateId) = await SeedAsync();
+        using var _1 = fixture;
+        var handler = new UpdateDocumentCommandHandler(fixture.CreateContext(), fixture.Mapper, CurrentUser);
+
+        var command = new UpdateDocumentCommand(
+            documentId, otherTemplateId, new DateOnly(2026, 9, 20), DocumentStatus.Sent,
+            [new CreateDocumentLineItemRequest("Design review", 2m, 300m, null)],
+            Currency: "EUR",
+            ClientCountry: "DE");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.Currency.Should().Be("EUR");
+        result.ClientCountry.Should().Be("DE");
+    }
+
+    [Fact]
     public async Task Handle_throws_NotFoundException_for_an_unknown_document()
     {
         using var fixture = new SqliteApplicationDbContextFixture();

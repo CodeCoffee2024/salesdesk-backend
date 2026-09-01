@@ -11,4 +11,10 @@ public sealed class WorkspaceProfileDto
     public string? Address { get; init; }
 
     public string? LogoUrl { get; init; }
+
+    /// <summary>ISO 3166-1 alpha-2 operating country (TASK-029).</summary>
+    public string Country { get; init; } = "US";
+
+    /// <summary>ISO 4217 default currency new documents are priced in unless overridden (TASK-029).</summary>
+    public string DefaultCurrency { get; init; } = "USD";
 }

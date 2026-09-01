@@ -27,6 +27,14 @@ public sealed class WorkspaceConfiguration : IEntityTypeConfiguration<Workspace>
         builder.Property(w => w.LogoUrl)
             .HasMaxLength(2048);
 
+        builder.Property(w => w.Country)
+            .HasMaxLength(2)
+            .IsRequired();
+
+        builder.Property(w => w.DefaultCurrency)
+            .HasMaxLength(3)
+            .IsRequired();
+
         builder.Property(w => w.IsActive)
             .IsRequired();
 

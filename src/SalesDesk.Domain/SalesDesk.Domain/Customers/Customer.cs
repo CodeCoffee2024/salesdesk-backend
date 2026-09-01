@@ -17,6 +17,9 @@ public sealed class Customer : Entity
 
     public string? Phone { get; private set; }
 
+    /// <summary>Optional ISO 3166-1 alpha-2 code for the customer's own country — when set, a new document for this customer defaults its ClientCountry override to this value rather than the issuing workspace's operating country (TASK-029).</summary>
+    public string? Country { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
 
     private Customer()
@@ -26,21 +29,23 @@ public sealed class Customer : Entity
         Email = string.Empty;
     }
 
-    public Customer(Guid workspaceId, string name, string company, string email, string? phone = null)
+    public Customer(Guid workspaceId, string name, string company, string email, string? phone = null, string? country = null)
     {
         WorkspaceId = Guard.AgainstEmpty(workspaceId, nameof(workspaceId));
         Name = Guard.AgainstNullOrWhiteSpace(name, nameof(name));
         Company = Guard.AgainstNullOrWhiteSpace(company, nameof(company));
         Email = Guard.AgainstNullOrWhiteSpace(email, nameof(email));
         Phone = phone;
+        Country = Guard.AgainstInvalidIsoCodeOrNull(country, 2, nameof(country));
         CreatedAt = DateTimeOffset.UtcNow;
     }
 
-    public void UpdateDetails(string name, string company, string email, string? phone)
+    public void UpdateDetails(string name, string company, string email, string? phone, string? country)
     {
         Name = Guard.AgainstNullOrWhiteSpace(name, nameof(name));
         Company = Guard.AgainstNullOrWhiteSpace(company, nameof(company));
         Email = Guard.AgainstNullOrWhiteSpace(email, nameof(email));
         Phone = phone;
+        Country = Guard.AgainstInvalidIsoCodeOrNull(country, 2, nameof(country));
     }
 }

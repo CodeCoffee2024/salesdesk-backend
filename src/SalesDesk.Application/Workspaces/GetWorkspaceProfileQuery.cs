@@ -22,7 +22,9 @@ public sealed class GetWorkspaceProfileQueryHandler(IApplicationDbContext contex
             Email = workspace.Email,
             Tagline = workspace.Tagline,
             Address = workspace.Address,
-            LogoUrl = workspace.LogoUrl
+            LogoUrl = workspace.LogoUrl,
+            Country = workspace.Country,
+            DefaultCurrency = workspace.DefaultCurrency
         };
     }
 }

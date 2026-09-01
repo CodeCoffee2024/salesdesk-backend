@@ -33,6 +33,12 @@ public static class DependencyInjection
         services.AddSingleton<ITokenService, TokenService>();
         services.AddScoped<IAuditLogger, AuditLogger>();
 
+        // Dashboard cross-currency aggregation (TASK-029) — no live FX-rate provider
+        // configured, so a static approximate-rate table stands in (see
+        // StaticRateCurrencyConversionService for the "log now, real provider later"
+        // rationale, matching IEmailSender/IPushNotificationSender below).
+        services.AddSingleton<ICurrencyConversionService, StaticRateCurrencyConversionService>();
+
         // Automated reminders (TASK-025). IPublicLinkBuilder needs the deployed
         // frontend's own base URL to build a `/view/{token}` link from the backend;
         // App:FrontendBaseUrl is intentionally allowed to be empty (falls back to a

@@ -4,6 +4,7 @@ using SalesDesk.Application.Documents;
 using SalesDesk.Domain.Customers;
 using SalesDesk.Domain.Documents;
 using SalesDesk.Domain.Templates;
+using SalesDesk.Domain.Workspaces;
 
 namespace SalesDesk.Application.Tests.Documents;
 
@@ -116,6 +117,78 @@ public class CreateDocumentCommandHandlerTests
         var act = () => handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<NotFoundException>();
+    }
+
+    [Fact]
+    public async Task Handle_defaults_currency_to_USD_when_no_workspace_row_or_override_exists()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var customer = new Customer(WorkspaceId, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+        var template = new Template(WorkspaceId, "Studio Standard", isDefault: true);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser);
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.Currency.Should().Be("USD");
+        result.ClientCountry.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Handle_defaults_currency_and_client_country_from_the_workspace_and_customer()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var workspace = new Workspace("Northline", "hello@northline.studio", country: "PH", defaultCurrency: "PHP");
+        var scopedCurrentUser = new FakeCurrentUserService(workspace.Id);
+        var customer = new Customer(workspace.Id, "Priya Nair", "Goodform Labs", "priya@goodform.io", country: "IN");
+        var template = new Template(workspace.Id, "Studio Standard", isDefault: true);
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser);
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        // The customer's own country wins over the workspace's operating country.
+        result.Currency.Should().Be("PHP");
+        result.ClientCountry.Should().Be("IN");
+    }
+
+    [Fact]
+    public async Task Handle_uses_explicit_currency_and_client_country_overrides_when_provided()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var workspace = new Workspace("Northline", "hello@northline.studio", country: "PH", defaultCurrency: "PHP");
+        var scopedCurrentUser = new FakeCurrentUserService(workspace.Id);
+        var customer = new Customer(workspace.Id, "Priya Nair", "Goodform Labs", "priya@goodform.io", country: "IN");
+        var template = new Template(workspace.Id, "Studio Standard", isDefault: true);
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser);
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)],
+            Currency: "EUR",
+            ClientCountry: "DE");
+
+        var result = await handler.Handle(command, CancellationToken.None);
+
+        result.Currency.Should().Be("EUR");
+        result.ClientCountry.Should().Be("DE");
     }
 
     [Fact]

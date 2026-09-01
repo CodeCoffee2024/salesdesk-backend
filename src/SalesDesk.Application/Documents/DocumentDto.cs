@@ -71,5 +71,11 @@ public sealed class DocumentDto
 
     public decimal Total { get; init; }
 
+    /// <summary>ISO 4217 code this document is priced in (TASK-029).</summary>
+    public string Currency { get; init; } = "USD";
+
+    /// <summary>Optional ISO 3166-1 alpha-2 override of the client's target country (TASK-029).</summary>
+    public string? ClientCountry { get; init; }
+
     public List<DocumentLineItemDto> LineItems { get; init; } = [];
 }

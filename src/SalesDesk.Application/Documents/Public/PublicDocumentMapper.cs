@@ -24,6 +24,8 @@ internal static class PublicDocumentMapper
             WorkspaceLogoUrl = workspaceLogoUrl,
             Subtotal = document.Subtotal,
             Total = document.Total,
+            Currency = document.Currency,
+            ClientCountry = document.ClientCountry,
             LineItems = document.LineItems.Select(li => new DocumentLineItemDto
             {
                 Id = li.Id,

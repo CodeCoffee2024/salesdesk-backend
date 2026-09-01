@@ -30,6 +30,9 @@ public sealed class CustomerConfiguration : IEntityTypeConfiguration<Customer>
         builder.Property(c => c.Phone)
             .HasMaxLength(50);
 
+        builder.Property(c => c.Country)
+            .HasMaxLength(2);
+
         builder.Property(c => c.CreatedAt)
             .IsRequired();
 

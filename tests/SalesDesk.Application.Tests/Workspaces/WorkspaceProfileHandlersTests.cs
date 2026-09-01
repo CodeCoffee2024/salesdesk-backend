@@ -21,6 +21,8 @@ public class WorkspaceProfileHandlersTests
         result.Name.Should().Be("Northline");
         result.Tagline.Should().Be("Creative studio");
         result.LogoUrl.Should().BeNull();
+        result.Country.Should().Be("US");
+        result.DefaultCurrency.Should().Be("USD");
     }
 
     [Fact]
@@ -33,22 +35,39 @@ public class WorkspaceProfileHandlersTests
 
         var handler = new UpdateWorkspaceProfileCommandHandler(fixture.CreateContext(), new FakeCurrentUserService(workspace.Id));
         var result = await handler.Handle(
-            new UpdateWorkspaceProfileCommand("Northline Studio", "hello@northline.studio", "Now with a tagline", "1 Main St", "https://cdn.example.com/logo.png"),
+            new UpdateWorkspaceProfileCommand("Northline Studio", "hello@northline.studio", "Now with a tagline", "1 Main St", "https://cdn.example.com/logo.png", "DE", "EUR"),
             CancellationToken.None);
 
         result.Name.Should().Be("Northline Studio");
         result.LogoUrl.Should().Be("https://cdn.example.com/logo.png");
+        result.Country.Should().Be("DE");
+        result.DefaultCurrency.Should().Be("EUR");
 
         var persisted = fixture.CreateContext().Workspaces.Single(w => w.Id == workspace.Id);
         persisted.Name.Should().Be("Northline Studio");
         persisted.LogoUrl.Should().Be("https://cdn.example.com/logo.png");
+        persisted.Country.Should().Be("DE");
+        persisted.DefaultCurrency.Should().Be("EUR");
     }
 
     [Fact]
     public void Validator_rejects_a_non_http_logo_url()
     {
         var validator = new UpdateWorkspaceProfileCommandValidator();
-        var command = new UpdateWorkspaceProfileCommand("Northline", "hello@northline.studio", null, null, "not-a-url");
+        var command = new UpdateWorkspaceProfileCommand("Northline", "hello@northline.studio", null, null, "not-a-url", "US", "USD");
+
+        var act = () => validator.ValidateAndThrow(command);
+
+        act.Should().Throw<ValidationException>();
+    }
+
+    [Theory]
+    [InlineData("USA", "USD")]
+    [InlineData("US", "DOLLARS")]
+    public void Validator_rejects_malformed_country_or_currency_codes(string country, string currency)
+    {
+        var validator = new UpdateWorkspaceProfileCommandValidator();
+        var command = new UpdateWorkspaceProfileCommand("Northline", "hello@northline.studio", null, null, null, country, currency);
 
         var act = () => validator.ValidateAndThrow(command);
 
