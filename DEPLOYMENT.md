@@ -15,6 +15,7 @@ Target: Railway (Hobby, ~$5/mo) or Render (Starter web service $7/mo + managed P
    | `Jwt__Secret` | A long random secret, generated once and stored only in the platform (`openssl rand -base64 48`) |
    | `Cors__AllowedOrigins__0` | The deployed frontend's URL, e.g. `https://app.salesdesk.com` |
    | `Gemini__ApiKey` | (optional, TASK-033) A Gemini API key from [aistudio.google.com](https://aistudio.google.com) — enables AI text-parsing on the document create form. Leave unset to ship with that feature disabled (it fails with a clear 503 rather than an error). |
+   | `Seed__AllowInProduction` | (optional, TASK-035) Set to `true` only when you deliberately want to run `POST /api/admin/seed-demo` against production (e.g. to provision the demo workspace for marketing screenshots on the live site). Leave unset/`false` the rest of the time — this is what the Production Environment Isolation Guardrail actually gates. |
 
    Never put any of these in `appsettings.json`, a GitHub Actions workflow file, or repository/Actions "variables" (non-secret) settings — only in the deployment platform's own secret store, per the guardrail in TASK-020. `appsettings.json` ships with empty placeholders for exactly this reason; the app throws at startup if `Jwt:Secret` is missing so a misconfigured deploy fails loudly instead of running with a default key.
 

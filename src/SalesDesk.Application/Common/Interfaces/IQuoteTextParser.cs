@@ -10,11 +10,13 @@ public sealed record ParsedCustomerText(string? Name, string? Email, string? Pho
 /// </summary>
 public sealed record ParsedLineItemText(string Description, decimal Quantity, decimal UnitPrice);
 
+/// <summary>Currency is an ISO 4217 code (e.g. "PHP") only when the text gives a real signal (an explicit currency symbol/code, or unambiguous regional context); null, never a guess, when the text is currency-agnostic. A bare "$" or an unmarked number stays null rather than being asserted as USD, since USD is just the form's own pre-existing default, not something the parser confirmed.</summary>
 public sealed record ParsedQuoteText(
     ParsedCustomerText Customer,
     List<ParsedLineItemText> LineItems,
     decimal? DepositPercentage,
-    int? ValidityDays);
+    int? ValidityDays,
+    string? Currency);
 
 /// <summary>
 /// Extracts structured quote/invoice data from unstructured pasted text (TASK-033).

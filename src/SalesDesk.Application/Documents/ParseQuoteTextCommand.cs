@@ -31,6 +31,8 @@ public sealed class ParsedQuoteResultDto
     public List<ParsedLineItemDto> LineItems { get; init; } = [];
     public decimal? SuggestedDepositPercentage { get; init; }
     public int? SuggestedValidityDays { get; init; }
+    /// <summary>ISO 4217 code the parser is confident the text specified (e.g. an explicit "Php"/"₱"/city context). Null when the text gave no real currency signal, in which case the frontend leaves the form's existing currency untouched rather than assuming USD.</summary>
+    public string? SuggestedCurrency { get; init; }
     public List<string> UnresolvedFields { get; init; } = [];
 }
 
@@ -115,6 +117,7 @@ public sealed class ParseQuoteTextCommandHandler(IApplicationDbContext context, 
                 .ToList(),
             SuggestedDepositPercentage = parsed.DepositPercentage,
             SuggestedValidityDays = parsed.ValidityDays,
+            SuggestedCurrency = parsed.Currency,
             UnresolvedFields = unresolvedFields
         };
     }

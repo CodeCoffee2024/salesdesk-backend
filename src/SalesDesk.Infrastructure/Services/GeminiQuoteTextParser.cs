@@ -106,13 +106,30 @@ public sealed class GeminiQuoteTextParser(HttpClient httpClient, IConfiguration 
             new ParsedCustomerText(payload.Customer?.Name, payload.Customer?.Email, payload.Customer?.Phone, payload.Customer?.Company),
             payload.LineItems?.Select(li => new ParsedLineItemText(li.Description ?? string.Empty, li.Quantity, li.UnitPrice)).ToList() ?? [],
             payload.DepositPercentage,
-            payload.ValidityDays);
+            payload.ValidityDays,
+            NormalizeCurrencyCode(payload.Currency));
+    }
+
+    /// <summary>Gemini is asked for an ISO 4217 code directly, but nothing stops a model from answering with a symbol or a lowercase/malformed string anyway. Anything that isn't a clean 3-letter code is treated as no signal rather than risking an invalid currency reaching CreateDocumentCommand's own ISO validator.</summary>
+    private static string? NormalizeCurrencyCode(string? currency)
+    {
+        if (string.IsNullOrWhiteSpace(currency))
+        {
+            return null;
+        }
+
+        var trimmed = currency.Trim().ToUpperInvariant();
+        return trimmed.Length == 3 && trimmed.All(char.IsAsciiLetterUpper) ? trimmed : null;
     }
 
     private static string BuildPrompt(string rawText) =>
         "Extract structured quote/invoice data from the pasted text below. Only extract facts explicitly stated or unambiguously implied. " +
         "Do not calculate a subtotal, tax, or total, and do not multiply quantity by unit price. Extract only the raw quantity and unit price " +
-        "for each line item exactly as they appear; leave a field null when the text doesn't mention it. Text:\n\n" + rawText;
+        "for each line item exactly as they appear; leave a field null when the text doesn't mention it. " +
+        "For currency: only set it when the text gives a real signal, such as an explicit currency symbol/code (e.g. Php, ₱, RM, €) or unambiguous " +
+        "regional context (a named city/country that implies a specific currency). Reply with the ISO 4217 code (e.g. PHP, EUR, MYR). " +
+        "A bare, unmarked number or a plain \"$\" is not a signal for any specific currency; leave currency null in that case rather than guessing USD. " +
+        "Text:\n\n" + rawText;
 
     /// <summary>Gemini's schema format is an OpenAPI-3.0 subset with uppercase type names (STRING, NUMBER, OBJECT, ARRAY, INTEGER).</summary>
     private static readonly object ResponseSchema = new
@@ -147,7 +164,8 @@ public sealed class GeminiQuoteTextParser(HttpClient httpClient, IConfiguration 
                 }
             },
             depositPercentage = new { type = "NUMBER", nullable = true },
-            validityDays = new { type = "INTEGER", nullable = true }
+            validityDays = new { type = "INTEGER", nullable = true },
+            currency = new { type = "STRING", nullable = true }
         },
         required = new[] { "customer", "lineItems" }
     };
@@ -158,6 +176,7 @@ public sealed class GeminiQuoteTextParser(HttpClient httpClient, IConfiguration 
         public List<ParsedLineItemPayload>? LineItems { get; set; }
         public decimal? DepositPercentage { get; set; }
         public int? ValidityDays { get; set; }
+        public string? Currency { get; set; }
     }
 
     private sealed class ParsedCustomerPayload
