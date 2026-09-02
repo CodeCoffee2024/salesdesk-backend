@@ -16,7 +16,7 @@ namespace SalesDesk.Application.Documents;
 public sealed record UpdateDocumentStatusCommand(Guid Id, DocumentStatus Status) : IRequest<DocumentDto>;
 
 public sealed class UpdateDocumentStatusCommandHandler(
-    IApplicationDbContext context, IMapper mapper, ICurrentUserService currentUser, IEmailSender emailSender, IPublicLinkBuilder linkBuilder)
+    IApplicationDbContext context, IMapper mapper, ICurrentUserService currentUser, IEmailSender emailSender, IPublicLinkBuilder linkBuilder, IDateTime dateTime)
     : IRequestHandler<UpdateDocumentStatusCommand, DocumentDto>
 {
     public async Task<DocumentDto> Handle(UpdateDocumentStatusCommand request, CancellationToken cancellationToken)
@@ -28,7 +28,19 @@ public sealed class UpdateDocumentStatusCommandHandler(
             ?? throw new NotFoundException(nameof(Document), request.Id);
 
         var previousStatus = document.Status;
-        document.ChangeStatus(request.Status);
+
+        // "Mark as Sent" from this narrow lifecycle PATCH goes through Dispatch too
+        // (TASK-037), so IsDispatched/DispatchedAt stay accurate no matter which of
+        // the three dispatch entry points (create, edit, or this one) fires it.
+        if (request.Status == DocumentStatus.Sent)
+        {
+            document.Dispatch(dateTime.UtcNow.UtcDateTime);
+        }
+        else
+        {
+            document.ChangeStatus(request.Status);
+        }
+
         await context.SaveChangesAsync(cancellationToken);
 
         var updated = await context.Documents
@@ -37,22 +49,12 @@ public sealed class UpdateDocumentStatusCommandHandler(
             .Include(d => d.LineItems)
             .FirstAsync(d => d.Id == document.Id, cancellationToken);
 
-        // TASK-034, Templates 1/2: only on a genuine Draft/Overdue/etc -> Sent
+        // TASK-034, Templates 1/2: only on a genuine Draft/RevisionRequested -> Sent
         // transition, not every PATCH that happens to already be Sent (e.g. an
         // unrelated field save that resubmits the current status unchanged).
-        if (request.Status == DocumentStatus.Sent && previousStatus != DocumentStatus.Sent && updated.Customer is not null)
+        if (request.Status == DocumentStatus.Sent && previousStatus != DocumentStatus.Sent)
         {
-            // Not every caller (e.g. some tests) seeds a Workspace row for the
-            // current workspace id. See CreateDocumentCommandHandler's identical
-            // fallback. No workspace to brand the email with means no email.
-            var workspace = await context.Workspaces.FirstOrDefaultAsync(w => w.Id == workspaceId, cancellationToken);
-            if (workspace is not null)
-            {
-                var documentUrl = linkBuilder.BuildDocumentUrl(updated.PublicToken);
-                var (subject, htmlBody) = DocumentNotificationEmailTemplates.BuildSentNotification(updated, workspace, documentUrl);
-
-                await emailSender.SendAsync(new EmailMessage(updated.Customer.Email, Cc: null, subject, htmlBody, ReplyTo: workspace.Email), cancellationToken);
-            }
+            await DocumentDispatchNotifier.NotifyAsync(context, emailSender, linkBuilder, updated, workspaceId, cancellationToken);
         }
 
         return mapper.Map<DocumentDto>(updated);

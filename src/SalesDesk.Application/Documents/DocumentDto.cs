@@ -45,6 +45,11 @@ public sealed class DocumentDto
 
     public bool IsLocked { get; init; }
 
+    /// <summary>True once this document has ever been dispatched to the client (TASK-037) — stays true even after Status later moves on.</summary>
+    public bool IsDispatched { get; init; }
+
+    public DateTime? DispatchedAt { get; init; }
+
     public DocumentSignatureSummaryDto? Signature { get; init; }
 
     public string DocumentNumber { get; init; } = string.Empty;

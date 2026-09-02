@@ -27,6 +27,7 @@ public sealed class CreateDocumentLineItemRequestValidator : AbstractValidator<C
     }
 }
 
+/// <param name="Dispatch">TASK-037 "Save &amp; Send to Client" — false leaves the new document as a Draft.</param>
 public sealed record CreateDocumentCommand(
     DocumentType Type,
     Guid CustomerId,
@@ -34,7 +35,8 @@ public sealed record CreateDocumentCommand(
     DateOnly DueDate,
     List<CreateDocumentLineItemRequest> LineItems,
     string? Currency = null,
-    string? ClientCountry = null) : IRequest<DocumentDto>;
+    string? ClientCountry = null,
+    bool Dispatch = false) : IRequest<DocumentDto>;
 
 public sealed class CreateDocumentCommandValidator : AbstractValidator<CreateDocumentCommand>
 {
@@ -51,7 +53,8 @@ public sealed class CreateDocumentCommandValidator : AbstractValidator<CreateDoc
     }
 }
 
-public sealed class CreateDocumentCommandHandler(IApplicationDbContext context, IMapper mapper, IDateTime dateTime, ICurrentUserService currentUser)
+public sealed class CreateDocumentCommandHandler(
+    IApplicationDbContext context, IMapper mapper, IDateTime dateTime, ICurrentUserService currentUser, IEmailSender emailSender, IPublicLinkBuilder linkBuilder)
     : IRequestHandler<CreateDocumentCommand, DocumentDto>
 {
     public async Task<DocumentDto> Handle(CreateDocumentCommand request, CancellationToken cancellationToken)
@@ -84,6 +87,13 @@ public sealed class CreateDocumentCommandHandler(IApplicationDbContext context, 
             document.AddLineItem(item.Description, item.Quantity, item.UnitPrice, item.ProductId);
         }
 
+        // A brand-new document is always Draft (see the Document constructor), so
+        // Dispatch's EnsureEditable check always passes here.
+        if (request.Dispatch)
+        {
+            document.Dispatch(dateTime.UtcNow.UtcDateTime);
+        }
+
         template.RecordUsage();
         context.Documents.Add(document);
         await context.SaveChangesAsync(cancellationToken);
@@ -96,6 +106,11 @@ public sealed class CreateDocumentCommandHandler(IApplicationDbContext context, 
             .Include(d => d.Template)
             .Include(d => d.LineItems)
             .FirstAsync(d => d.Id == document.Id, cancellationToken);
+
+        if (request.Dispatch)
+        {
+            await DocumentDispatchNotifier.NotifyAsync(context, emailSender, linkBuilder, created, workspaceId, cancellationToken);
+        }
 
         return mapper.Map<DocumentDto>(created);
     }

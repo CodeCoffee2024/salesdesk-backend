@@ -14,15 +14,16 @@ public sealed record CreateDocumentRequest(
     DateOnly DueDate,
     List<CreateDocumentLineItemRequest> LineItems,
     string? Currency = null,
-    string? ClientCountry = null);
+    string? ClientCountry = null,
+    bool Dispatch = false);
 
 public sealed record UpdateDocumentRequest(
     Guid TemplateId,
     DateOnly DueDate,
-    DocumentStatus Status,
     List<CreateDocumentLineItemRequest> LineItems,
     string? Currency = null,
-    string? ClientCountry = null);
+    string? ClientCountry = null,
+    bool Dispatch = false);
 
 public sealed record UpdateDocumentStatusRequest(DocumentStatus Status);
 
@@ -57,7 +58,7 @@ public sealed class DocumentsController(ISender sender) : ControllerBase
     [HttpPost]
     public async Task<ActionResult<DocumentDto>> Create([FromBody] CreateDocumentRequest request, CancellationToken cancellationToken)
     {
-        var command = new CreateDocumentCommand(request.Type, request.CustomerId, request.TemplateId, request.DueDate, request.LineItems, request.Currency, request.ClientCountry);
+        var command = new CreateDocumentCommand(request.Type, request.CustomerId, request.TemplateId, request.DueDate, request.LineItems, request.Currency, request.ClientCountry, request.Dispatch);
         var result = await sender.Send(command, cancellationToken);
 
         return CreatedAtAction(nameof(GetById), new { id = result.Id }, result);
@@ -67,7 +68,7 @@ public sealed class DocumentsController(ISender sender) : ControllerBase
     [HttpPut("{id:guid}")]
     public async Task<ActionResult<DocumentDto>> Update(Guid id, [FromBody] UpdateDocumentRequest request, CancellationToken cancellationToken)
     {
-        var command = new UpdateDocumentCommand(id, request.TemplateId, request.DueDate, request.Status, request.LineItems, request.Currency, request.ClientCountry);
+        var command = new UpdateDocumentCommand(id, request.TemplateId, request.DueDate, request.LineItems, request.Currency, request.ClientCountry, request.Dispatch);
         var result = await sender.Send(command, cancellationToken);
 
         return Ok(result);

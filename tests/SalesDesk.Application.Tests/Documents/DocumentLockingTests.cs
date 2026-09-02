@@ -64,7 +64,7 @@ public class DocumentLockingTests
     {
         var (fixture, currentUser, documentId, _) = await SeedSignedDocumentAsync();
         using var _1 = fixture;
-        var handler = new UpdateDocumentStatusCommandHandler(fixture.CreateContext(), fixture.Mapper, currentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
+        var handler = new UpdateDocumentStatusCommandHandler(fixture.CreateContext(), fixture.Mapper, currentUser, new FakeEmailSender(), new FakePublicLinkBuilder(), DateTime);
 
         var act = () => handler.Handle(new UpdateDocumentStatusCommand(documentId, DocumentStatus.Paid), CancellationToken.None);
 
@@ -76,9 +76,9 @@ public class DocumentLockingTests
     {
         var (fixture, currentUser, documentId, templateId) = await SeedSignedDocumentAsync();
         using var _1 = fixture;
-        var handler = new UpdateDocumentCommandHandler(fixture.CreateContext(), fixture.Mapper, currentUser);
+        var handler = new UpdateDocumentCommandHandler(fixture.CreateContext(), fixture.Mapper, currentUser, DateTime, new FakeEmailSender(), new FakePublicLinkBuilder());
 
-        var command = new UpdateDocumentCommand(documentId, templateId, new DateOnly(2026, 9, 20), DocumentStatus.Sent, []);
+        var command = new UpdateDocumentCommand(documentId, templateId, new DateOnly(2026, 9, 20), []);
         var act = () => handler.Handle(command, CancellationToken.None);
 
         await act.Should().ThrowAsync<InvalidOperationException>();

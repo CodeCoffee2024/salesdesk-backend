@@ -64,6 +64,11 @@ public sealed class Document : Entity
 
     public DateTime? RevisionRequestedAtUtc { get; private set; }
 
+    /// <summary>True once this document has ever been dispatched to the client (TASK-037) — unlike Status, this never reverts, so it still reads true after the document later moves on to Accepted/Paid or back through a revision cycle.</summary>
+    public bool IsDispatched { get; private set; }
+
+    public DateTime? DispatchedAt { get; private set; }
+
     private Document()
     {
         DocumentNumber = string.Empty;
@@ -101,7 +106,7 @@ public sealed class Document : Entity
 
     public DocumentLineItem AddLineItem(string description, decimal quantity, decimal unitPrice, Guid? productId = null)
     {
-        EnsureNotLocked();
+        EnsureEditable();
         var lineItem = new DocumentLineItem(Id, description, quantity, unitPrice, productId);
         _lineItems.Add(lineItem);
         RecalculateTotals();
@@ -110,7 +115,7 @@ public sealed class Document : Entity
 
     public void UpdateLineItem(Guid lineItemId, string description, decimal quantity, decimal unitPrice, Guid? productId = null)
     {
-        EnsureNotLocked();
+        EnsureEditable();
         var lineItem = _lineItems.SingleOrDefault(li => li.Id == lineItemId)
             ?? throw new InvalidOperationException($"Line item '{lineItemId}' does not belong to document '{Id}'.");
 
@@ -120,7 +125,7 @@ public sealed class Document : Entity
 
     public void RemoveLineItem(Guid lineItemId)
     {
-        EnsureNotLocked();
+        EnsureEditable();
         var lineItem = _lineItems.SingleOrDefault(li => li.Id == lineItemId)
             ?? throw new InvalidOperationException($"Line item '{lineItemId}' does not belong to document '{Id}'.");
 
@@ -128,6 +133,12 @@ public sealed class Document : Entity
         RecalculateTotals();
     }
 
+    /// <summary>
+    /// Bare lifecycle transitions (Mark as Accepted/Paid, etc.) — deliberately only
+    /// gated by <see cref="EnsureNotLocked"/>, not <see cref="EnsureEditable"/>: these
+    /// don't touch priced content, so they stay allowed on a dispatched document.
+    /// The one exception is handled by <see cref="Dispatch"/> below, not here.
+    /// </summary>
     public void ChangeStatus(DocumentStatus status)
     {
         EnsureNotLocked();
@@ -136,7 +147,7 @@ public sealed class Document : Entity
 
     public void Reschedule(DateOnly dueDate)
     {
-        EnsureNotLocked();
+        EnsureEditable();
         if (dueDate < IssueDate)
         {
             throw new ArgumentOutOfRangeException(nameof(dueDate), dueDate, "Due date cannot be earlier than the issue date.");
@@ -147,14 +158,14 @@ public sealed class Document : Entity
 
     public void ChangeTemplate(Guid templateId)
     {
-        EnsureNotLocked();
+        EnsureEditable();
         TemplateId = Guard.AgainstEmpty(templateId, nameof(templateId));
     }
 
     /// <summary>Overrides the currency and/or target client country for this document (TASK-029) — e.g. issuing a quote in EUR to a German client from a USD-default workspace.</summary>
     public void ChangeCurrency(string currency, string? clientCountry)
     {
-        EnsureNotLocked();
+        EnsureEditable();
         Currency = Guard.AgainstInvalidIsoCode(currency, 3, nameof(currency));
         ClientCountry = Guard.AgainstInvalidIsoCodeOrNull(clientCountry, 2, nameof(clientCountry));
     }
@@ -165,7 +176,7 @@ public sealed class Document : Entity
     /// </summary>
     public void ReplaceLineItems(IEnumerable<NewLineItem> items)
     {
-        EnsureNotLocked();
+        EnsureEditable();
         _lineItems.Clear();
 
         foreach (var item in items)
@@ -182,6 +193,40 @@ public sealed class Document : Entity
         {
             throw new InvalidOperationException($"Document '{Id}' is locked and cannot be modified after it has been e-signed.");
         }
+    }
+
+    /// <summary>
+    /// TASK-037 guardrail: once a document has been dispatched to the client, its
+    /// priced content can't silently change under them. Only Draft (never sent) or
+    /// RevisionRequested (the client explicitly asked for changes) allow the
+    /// content mutators above — Sent, Overdue, Accepted and Paid all require
+    /// requesting or creating a revision first, which is what routes back through
+    /// RevisionRequested and reopens editing.
+    /// </summary>
+    public void EnsureEditable()
+    {
+        EnsureNotLocked();
+        if (Status is not (DocumentStatus.Draft or DocumentStatus.RevisionRequested))
+        {
+            throw new InvalidOperationException(
+                $"Document '{Id}' is {Status} and can't be edited directly. Request or create a revision to make changes.");
+        }
+    }
+
+    /// <summary>
+    /// Sends this document to the client for the first time, or again after a
+    /// revision (RevisionRequested → Sent). IsDispatched/DispatchedAt are set once
+    /// and never cleared — unlike Status, which can keep moving on (Accepted, Paid,
+    /// a future revision), they answer "has this ever reached the client" for good.
+    /// </summary>
+    public void Dispatch(DateTime dispatchedAtUtc)
+    {
+        EnsureEditable();
+        IsDispatched = true;
+        DispatchedAt = dispatchedAtUtc;
+        Status = DocumentStatus.Sent;
+        RevisionFeedback = null;
+        RevisionRequestedAtUtc = null;
     }
 
     /// <summary>

@@ -24,7 +24,7 @@ public class CreateDocumentCommandHandlerTests
         fixture.Context.Templates.Add(template);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser);
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
         var command = new CreateDocumentCommand(
             DocumentType.Quote,
             customer.Id,
@@ -51,7 +51,7 @@ public class CreateDocumentCommandHandlerTests
         fixture.Context.Templates.Add(template);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser);
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
         var command = new CreateDocumentCommand(
             DocumentType.Invoice, customer.Id, template.Id, new DateOnly(2026, 9, 8),
             [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
@@ -73,7 +73,7 @@ public class CreateDocumentCommandHandlerTests
         fixture.Context.Templates.Add(template);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser);
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
         var command = new CreateDocumentCommand(
             DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
             [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
@@ -91,7 +91,7 @@ public class CreateDocumentCommandHandlerTests
         fixture.Context.Templates.Add(template);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser);
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
         var command = new CreateDocumentCommand(
             DocumentType.Quote, Guid.NewGuid(), template.Id, new DateOnly(2026, 9, 8),
             [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
@@ -109,7 +109,7 @@ public class CreateDocumentCommandHandlerTests
         fixture.Context.Customers.Add(customer);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser);
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
         var command = new CreateDocumentCommand(
             DocumentType.Quote, customer.Id, Guid.NewGuid(), new DateOnly(2026, 9, 8),
             [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
@@ -129,7 +129,7 @@ public class CreateDocumentCommandHandlerTests
         fixture.Context.Templates.Add(template);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser);
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
         var command = new CreateDocumentCommand(
             DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
             [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
@@ -153,7 +153,7 @@ public class CreateDocumentCommandHandlerTests
         fixture.Context.Templates.Add(template);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser);
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
         var command = new CreateDocumentCommand(
             DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
             [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
@@ -178,7 +178,7 @@ public class CreateDocumentCommandHandlerTests
         fixture.Context.Templates.Add(template);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser);
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
         var command = new CreateDocumentCommand(
             DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
             [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)],
@@ -201,7 +201,7 @@ public class CreateDocumentCommandHandlerTests
         fixture.Context.Templates.Add(template);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser);
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
         var command = new CreateDocumentCommand(
             DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
             [new CreateDocumentLineItemRequest("Work", 0m, 100m, null)]);

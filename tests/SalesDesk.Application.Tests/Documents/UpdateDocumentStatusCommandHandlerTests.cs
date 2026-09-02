@@ -11,6 +11,7 @@ public class UpdateDocumentStatusCommandHandlerTests
 {
     private static readonly Guid WorkspaceId = Guid.NewGuid();
     private static readonly FakeCurrentUserService CurrentUser = new(WorkspaceId);
+    private static readonly FakeDateTime DateTime = new(new DateTimeOffset(2026, 8, 27, 12, 0, 0, TimeSpan.Zero));
 
     [Fact]
     public async Task Handle_updates_the_status_and_returns_the_document()
@@ -26,18 +27,19 @@ public class UpdateDocumentStatusCommandHandlerTests
         fixture.Context.Documents.Add(document);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new UpdateDocumentStatusCommandHandler(fixture.CreateContext(), fixture.Mapper, CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
+        var handler = new UpdateDocumentStatusCommandHandler(fixture.CreateContext(), fixture.Mapper, CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder(), DateTime);
 
         var result = await handler.Handle(new UpdateDocumentStatusCommand(document.Id, DocumentStatus.Sent), CancellationToken.None);
 
         result.Status.Should().Be(DocumentStatus.Sent);
+        result.IsDispatched.Should().BeTrue();
     }
 
     [Fact]
     public async Task Handle_throws_NotFoundException_for_an_unknown_document()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var handler = new UpdateDocumentStatusCommandHandler(fixture.Context, fixture.Mapper, CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
+        var handler = new UpdateDocumentStatusCommandHandler(fixture.Context, fixture.Mapper, CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder(), DateTime);
 
         var act = () => handler.Handle(new UpdateDocumentStatusCommand(Guid.NewGuid(), DocumentStatus.Paid), CancellationToken.None);
 
