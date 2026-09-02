@@ -26,7 +26,7 @@ public class UpdateDocumentStatusCommandHandlerTests
         fixture.Context.Documents.Add(document);
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new UpdateDocumentStatusCommandHandler(fixture.CreateContext(), fixture.Mapper, CurrentUser);
+        var handler = new UpdateDocumentStatusCommandHandler(fixture.CreateContext(), fixture.Mapper, CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
 
         var result = await handler.Handle(new UpdateDocumentStatusCommand(document.Id, DocumentStatus.Sent), CancellationToken.None);
 
@@ -37,7 +37,7 @@ public class UpdateDocumentStatusCommandHandlerTests
     public async Task Handle_throws_NotFoundException_for_an_unknown_document()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
-        var handler = new UpdateDocumentStatusCommandHandler(fixture.Context, fixture.Mapper, CurrentUser);
+        var handler = new UpdateDocumentStatusCommandHandler(fixture.Context, fixture.Mapper, CurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
 
         var act = () => handler.Handle(new UpdateDocumentStatusCommand(Guid.NewGuid(), DocumentStatus.Paid), CancellationToken.None);
 

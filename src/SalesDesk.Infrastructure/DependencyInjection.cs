@@ -66,6 +66,25 @@ public static class DependencyInjection
             services.AddSingleton<IEmailSender, LogEmailSender>();
         }
 
+        // AI quote text parsing (TASK-033) only goes live once Gemini:ApiKey is
+        // configured — otherwise a parse request fails clearly (see
+        // UnconfiguredQuoteTextParser) rather than the endpoint not existing at all.
+        // GeminiQuoteTextParser reads the key itself (from IConfiguration) and
+        // appends it as a query parameter per request, per Google's own REST API
+        // convention — the HttpClient here only needs the base address set.
+        var geminiApiKey = configuration["Gemini:ApiKey"];
+        if (!string.IsNullOrWhiteSpace(geminiApiKey))
+        {
+            services.AddHttpClient<IQuoteTextParser, GeminiQuoteTextParser>(client =>
+            {
+                client.BaseAddress = new Uri("https://generativelanguage.googleapis.com/");
+            });
+        }
+        else
+        {
+            services.AddSingleton<IQuoteTextParser, UnconfiguredQuoteTextParser>();
+        }
+
         // Web Push (TASK-027) only goes live once a VAPID keypair is configured —
         // otherwise the view/sign/revision-request notification paths fall back
         // to a log-only sender. See docs/research/TASK-DEPLOYMENT.md.

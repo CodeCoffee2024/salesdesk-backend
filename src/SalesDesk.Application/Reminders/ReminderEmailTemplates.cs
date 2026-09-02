@@ -1,22 +1,24 @@
+using SalesDesk.Application.Common.Email;
 using SalesDesk.Domain.Documents;
+using SalesDesk.Domain.Workspaces;
 
 namespace SalesDesk.Application.Reminders;
 
-/// <summary>Builds the subject/body pair for each automated reminder rule (TASK-025). Kept separate from the dispatch handler so the wording can change without touching the trigger/suppression logic.</summary>
+/// <summary>Builds the subject/body pair for each automated reminder rule (TASK-025), wrapped in the sending workspace's own branding (TASK-034): these go to the workspace's own customer, never the platform's. Kept separate from the dispatch handler so the wording can change without touching the trigger/suppression logic.</summary>
 internal static class ReminderEmailTemplates
 {
-    public static (string Subject, string HtmlBody) Build(ReminderType type, Document document, string documentUrl)
+    public static (string Subject, string HtmlBody) Build(ReminderType type, Document document, Workspace workspace, string documentUrl)
     {
         var customerName = document.Customer?.Name ?? "there";
 
-        return type switch
+        var (subject, bodyFragment) = type switch
         {
             ReminderType.QuoteFollowUp => (
                 $"Following up on {document.DocumentNumber}",
                 $"""
                 <p>Hi {customerName},</p>
-                <p>Just checking in on quote <strong>{document.DocumentNumber}</strong> ({document.Total:C}) — let us know if you have any questions.</p>
-                <p><a href="{documentUrl}">View quote</a></p>
+                <p>Just checking in on quote <strong>{document.DocumentNumber}</strong> ({document.Total:C}). Let us know if you have any questions.</p>
+                {EmailBranding.CtaButton("View quote", documentUrl)}
                 """),
 
             ReminderType.InvoiceDueSoon => (
@@ -24,7 +26,7 @@ internal static class ReminderEmailTemplates
                 $"""
                 <p>Hi {customerName},</p>
                 <p>A friendly reminder that invoice <strong>{document.DocumentNumber}</strong> ({document.Total:C}) is due on {document.DueDate:MMM d, yyyy}.</p>
-                <p><a href="{documentUrl}">View invoice</a></p>
+                {EmailBranding.CtaButton("View invoice", documentUrl)}
                 """),
 
             ReminderType.InvoiceOverdueFirstNotice => (
@@ -32,18 +34,20 @@ internal static class ReminderEmailTemplates
                 $"""
                 <p>Hi {customerName},</p>
                 <p>Invoice <strong>{document.DocumentNumber}</strong> ({document.Total:C}) was due on {document.DueDate:MMM d, yyyy} and is now overdue.</p>
-                <p><a href="{documentUrl}">View invoice</a></p>
+                {EmailBranding.CtaButton("View invoice", documentUrl)}
                 """),
 
             ReminderType.InvoiceOverdueFinalNotice => (
                 $"Final notice: {document.DocumentNumber} is significantly overdue",
                 $"""
                 <p>Hi {customerName},</p>
-                <p>This is a final notice — invoice <strong>{document.DocumentNumber}</strong> ({document.Total:C}) was due on {document.DueDate:MMM d, yyyy} and remains unpaid.</p>
-                <p><a href="{documentUrl}">View invoice</a></p>
+                <p>This is a final notice: invoice <strong>{document.DocumentNumber}</strong> ({document.Total:C}) was due on {document.DueDate:MMM d, yyyy} and remains unpaid.</p>
+                {EmailBranding.CtaButton("View invoice", documentUrl)}
                 """),
 
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown reminder type.")
         };
+
+        return (subject, EmailBranding.Workspace(workspace.Name, workspace.LogoUrl, workspace.Tagline, workspace.Address, workspace.Email, bodyFragment));
     }
 }

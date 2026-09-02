@@ -20,7 +20,7 @@ public class SignDocumentCommandHandlerTests
         SignatureType.Drawn, "data:image/png;base64,abc==", "203.0.113.5", "Mozilla/5.0");
 
     private static SignDocumentCommandHandler MakeHandler(IApplicationDbContext context) =>
-        new(context, DateTime, new WorkspacePushNotifier(context, new FakePushNotificationSender()), new FakePublicLinkBuilder());
+        new(context, DateTime, new WorkspacePushNotifier(context, new FakePushNotificationSender()), new FakePublicLinkBuilder(), new FakeEmailSender());
 
     [Fact]
     public async Task Handle_persists_the_signature_and_locks_the_document()

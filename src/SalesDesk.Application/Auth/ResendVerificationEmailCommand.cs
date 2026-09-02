@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SalesDesk.Application.Common.Email;
 using SalesDesk.Application.Common.Interfaces;
 
 namespace SalesDesk.Application.Auth;
@@ -47,17 +48,19 @@ public sealed class ResendVerificationEmailCommandHandler(
         await context.SaveChangesAsync(cancellationToken);
 
         var verifyUrl = linkBuilder.BuildVerifyEmailUrl(rawToken);
+        var body = $"""
+            <p>Hi {user.FullName},</p>
+            <p>Click the button below to verify your email address. This link expires in 24 hours.</p>
+            {EmailBranding.CtaButton("Verify your email", verifyUrl)}
+            <p>If you didn't request this, you can safely ignore this email.</p>
+            """;
+
         await emailSender.SendAsync(
             new EmailMessage(
                 user.Email,
                 Cc: null,
                 Subject: "Verify your SalesDesk email address",
-                HtmlBody: $"""
-                    <p>Hi {user.FullName},</p>
-                    <p>Click the link below to verify your email address. This link expires in 24 hours.</p>
-                    <p><a href="{verifyUrl}">Verify your email</a></p>
-                    <p>If you didn't request this, you can safely ignore this email.</p>
-                    """),
+                HtmlBody: EmailBranding.System(body)),
             cancellationToken);
     }
 }

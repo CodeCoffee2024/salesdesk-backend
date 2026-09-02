@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SalesDesk.Application.Common.Email;
 using SalesDesk.Application.Common.Exceptions;
 using SalesDesk.Application.Common.Interfaces;
 using SalesDesk.Application.Notifications;
@@ -20,7 +21,7 @@ public sealed class RequestDocumentRevisionCommandValidator : AbstractValidator<
 }
 
 public sealed class RequestDocumentRevisionCommandHandler(
-    IApplicationDbContext context, IDateTime dateTime, WorkspacePushNotifier pushNotifier, IPublicLinkBuilder linkBuilder)
+    IApplicationDbContext context, IDateTime dateTime, WorkspacePushNotifier pushNotifier, IPublicLinkBuilder linkBuilder, IEmailSender emailSender)
     : IRequestHandler<RequestDocumentRevisionCommand, PublicDocumentDto>
 {
     public async Task<PublicDocumentDto> Handle(RequestDocumentRevisionCommand request, CancellationToken cancellationToken)
@@ -39,11 +40,24 @@ public sealed class RequestDocumentRevisionCommandHandler(
 
         var customerName = document.Customer?.Name ?? "A client";
         var preview = request.Feedback.Length > 120 ? request.Feedback[..120] + "…" : request.Feedback;
+        var previewUrl = linkBuilder.BuildDocumentPreviewUrl(document.Id);
+
         await pushNotifier.NotifyWorkspaceAsync(
             document.WorkspaceId,
             title: $"Changes requested on {document.DocumentNumber}",
             body: $"{customerName}: \"{preview}\"",
-            url: linkBuilder.BuildDocumentPreviewUrl(document.Id),
+            url: previewUrl,
+            cancellationToken);
+
+        // TASK-034, Template 3 (Activity & Status Update). See SignDocumentCommandHandler's matching send for why this is Workspace-, not System-, branded.
+        var emailBody = $"""
+            <p><strong>{customerName}</strong> requested changes on <strong>{document.DocumentNumber}</strong>:</p>
+            <p style="padding:12px 16px;background:#f4f5f9;border-radius:8px;">&ldquo;{System.Net.WebUtility.HtmlEncode(request.Feedback)}&rdquo;</p>
+            {EmailBranding.CtaButton("View document", previewUrl)}
+            """;
+        await emailSender.SendAsync(
+            new EmailMessage(workspace.Email, Cc: null, $"Changes requested on {document.DocumentNumber}",
+                EmailBranding.Workspace(workspace.Name, workspace.LogoUrl, workspace.Tagline, workspace.Address, workspace.Email, emailBody)),
             cancellationToken);
 
         return PublicDocumentMapper.ToDto(document, workspace.Name, workspace.LogoUrl);

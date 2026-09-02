@@ -70,7 +70,7 @@ public class PublicDocumentNotificationTests
         var (fixture, _, document) = await SeedAsync();
         var sender = new FakePushNotificationSender();
         var handler = new SignDocumentCommandHandler(
-            fixture.CreateContext(), DateTime, new WorkspacePushNotifier(fixture.CreateContext(), sender), new FakePublicLinkBuilder());
+            fixture.CreateContext(), DateTime, new WorkspacePushNotifier(fixture.CreateContext(), sender), new FakePublicLinkBuilder(), new FakeEmailSender());
 
         await handler.Handle(
             new SignDocumentCommand(document.PublicToken, "Maya Chen", "maya@northstar.studio", true, SignatureType.Drawn, "data:image/png;base64,abc==", "203.0.113.5", "Mozilla/5.0"),
@@ -85,7 +85,7 @@ public class PublicDocumentNotificationTests
         var (fixture, _, document) = await SeedAsync();
         var sender = new FakePushNotificationSender();
         var handler = new RequestDocumentRevisionCommandHandler(
-            fixture.CreateContext(), DateTime, new WorkspacePushNotifier(fixture.CreateContext(), sender), new FakePublicLinkBuilder());
+            fixture.CreateContext(), DateTime, new WorkspacePushNotifier(fixture.CreateContext(), sender), new FakePublicLinkBuilder(), new FakeEmailSender());
 
         var result = await handler.Handle(new RequestDocumentRevisionCommand(document.PublicToken, "Please change the color scheme."), CancellationToken.None);
 

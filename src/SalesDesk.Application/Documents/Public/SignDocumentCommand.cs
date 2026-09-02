@@ -1,6 +1,7 @@
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SalesDesk.Application.Common.Email;
 using SalesDesk.Application.Common.Exceptions;
 using SalesDesk.Application.Common.Interfaces;
 using SalesDesk.Application.Notifications;
@@ -45,7 +46,7 @@ public sealed class SignDocumentCommandValidator : AbstractValidator<SignDocumen
 }
 
 public sealed class SignDocumentCommandHandler(
-    IApplicationDbContext context, IDateTime dateTime, WorkspacePushNotifier pushNotifier, IPublicLinkBuilder linkBuilder)
+    IApplicationDbContext context, IDateTime dateTime, WorkspacePushNotifier pushNotifier, IPublicLinkBuilder linkBuilder, IEmailSender emailSender)
     : IRequestHandler<SignDocumentCommand, PublicDocumentDto>
 {
     public async Task<PublicDocumentDto> Handle(SignDocumentCommand request, CancellationToken cancellationToken)
@@ -78,11 +79,25 @@ public sealed class SignDocumentCommandHandler(
 
         var workspace = await context.Workspaces.FirstAsync(w => w.Id == document.WorkspaceId, cancellationToken);
 
+        var previewUrl = linkBuilder.BuildDocumentPreviewUrl(document.Id);
+
         await pushNotifier.NotifyWorkspaceAsync(
             document.WorkspaceId,
             title: $"{document.DocumentNumber} was signed",
             body: $"{request.SignerName} just signed your {document.Type.ToString().ToLowerInvariant()}.",
-            url: linkBuilder.BuildDocumentPreviewUrl(document.Id),
+            url: previewUrl,
+            cancellationToken);
+
+        // TASK-034, Template 3 (Activity & Status Update): notifies the workspace
+        // owner, not the client. Still workspace-branded (it's their own business's
+        // inbox), unlike the platform-only System() wrapper used for auth emails.
+        var emailBody = $"""
+            <p><strong>{request.SignerName}</strong> just signed {document.Type.ToString().ToLowerInvariant()} <strong>{document.DocumentNumber}</strong> ({document.Total:C}).</p>
+            {EmailBranding.CtaButton("View document", previewUrl)}
+            """;
+        await emailSender.SendAsync(
+            new EmailMessage(workspace.Email, Cc: null, $"{document.DocumentNumber} was signed",
+                EmailBranding.Workspace(workspace.Name, workspace.LogoUrl, workspace.Tagline, workspace.Address, workspace.Email, emailBody)),
             cancellationToken);
 
         return PublicDocumentMapper.ToDto(document, workspace.Name, workspace.LogoUrl);

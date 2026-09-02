@@ -1,6 +1,7 @@
 namespace SalesDesk.Application.Common.Interfaces;
 
-public sealed record EmailMessage(string To, string? Cc, string Subject, string HtmlBody);
+/// <summary>ReplyTo (TASK-034): set to a workspace's own business email on customer-facing sends, so a reply reaches the workspace rather than the platform's shared sending address — the From address itself stays the single authenticated system sender regardless (Resend:FromAddress), since per-workspace sending domains aren't supported.</summary>
+public sealed record EmailMessage(string To, string? Cc, string Subject, string HtmlBody, string? ReplyTo = null);
 
 /// <summary>
 /// Sends a single email. Implemented in Infrastructure; until a real transactional

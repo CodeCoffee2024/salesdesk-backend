@@ -26,6 +26,9 @@ public sealed record UpdateDocumentRequest(
 
 public sealed record UpdateDocumentStatusRequest(DocumentStatus Status);
 
+/// <summary>TASK-033: raw text pasted from a WhatsApp message, email, or note, to be parsed into a quote draft.</summary>
+public sealed record ParseQuoteTextRequest(string RawText);
+
 [ApiController]
 [Route("api/documents")]
 public sealed class DocumentsController(ISender sender) : ControllerBase
@@ -84,6 +87,15 @@ public sealed class DocumentsController(ISender sender) : ControllerBase
     public async Task<ActionResult<DocumentDto>> UpdateStatus(Guid id, [FromBody] UpdateDocumentStatusRequest request, CancellationToken cancellationToken)
     {
         var result = await sender.Send(new UpdateDocumentStatusCommand(id, request.Status), cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>POST /api/documents/parse-text — TASK-033: AI-parses pasted unstructured text into a customer + line items, auto-provisioning the customer when they don't already exist (dedup'd by email). Does not create a Document; the frontend pre-fills the normal create form with the result and the user still reviews and submits it themselves.</summary>
+    [Authorize(Policy = Policies.CanManage)]
+    [HttpPost("parse-text")]
+    public async Task<ActionResult<ParsedQuoteResultDto>> ParseText([FromBody] ParseQuoteTextRequest request, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new ParseQuoteTextCommand(request.RawText), cancellationToken);
         return Ok(result);
     }
 

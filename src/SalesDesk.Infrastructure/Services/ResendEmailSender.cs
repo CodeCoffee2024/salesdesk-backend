@@ -23,6 +23,7 @@ public sealed class ResendEmailSender(HttpClient httpClient, IConfiguration conf
             from = string.IsNullOrWhiteSpace(from) ? "onboarding@resend.dev" : from,
             to = new[] { message.To },
             cc = message.Cc is null ? null : new[] { message.Cc },
+            reply_to = message.ReplyTo,
             subject = message.Subject,
             html = message.HtmlBody
         };

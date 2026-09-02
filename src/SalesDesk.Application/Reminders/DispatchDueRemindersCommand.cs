@@ -143,10 +143,11 @@ public sealed class DispatchDueRemindersCommandHandler(
 
     private async Task SendReminderAsync(Document document, ReminderType type, ReminderSettings settings, DateTime sentAtUtc, CancellationToken cancellationToken)
     {
+        var workspace = await context.Workspaces.FirstAsync(w => w.Id == document.WorkspaceId, cancellationToken);
         var documentUrl = linkBuilder.BuildDocumentUrl(document.PublicToken);
-        var (subject, htmlBody) = ReminderEmailTemplates.Build(type, document, documentUrl);
+        var (subject, htmlBody) = ReminderEmailTemplates.Build(type, document, workspace, documentUrl);
 
-        await emailSender.SendAsync(new EmailMessage(document.Customer!.Email, settings.CcEmail, subject, htmlBody), cancellationToken);
+        await emailSender.SendAsync(new EmailMessage(document.Customer!.Email, settings.CcEmail, subject, htmlBody, ReplyTo: workspace.Email), cancellationToken);
 
         // Saved immediately (not batched until the end of the run) so a mid-run
         // crash can't cause an already-sent reminder to be sent again on the next tick.

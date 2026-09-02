@@ -2,6 +2,7 @@ using AutoMapper;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SalesDesk.Application.Common.Email;
 using SalesDesk.Application.Common.Interfaces;
 using SalesDesk.Domain.Audit;
 using SalesDesk.Domain.Users;
@@ -92,16 +93,18 @@ public sealed class RegisterCommandHandler(
             cancellationToken);
 
         var verifyUrl = linkBuilder.BuildVerifyEmailUrl(rawToken);
+        var verifyBody = $"""
+            <p>Hi {user.FullName},</p>
+            <p>Welcome to SalesDesk! Click the button below to verify your email address. This link expires in 24 hours.</p>
+            {EmailBranding.CtaButton("Verify your email", verifyUrl)}
+            """;
+
         await emailSender.SendAsync(
             new EmailMessage(
                 user.Email,
                 Cc: null,
                 Subject: "Verify your SalesDesk email address",
-                HtmlBody: $"""
-                    <p>Hi {user.FullName},</p>
-                    <p>Welcome to SalesDesk! Click the link below to verify your email address. This link expires in 24 hours.</p>
-                    <p><a href="{verifyUrl}">Verify your email</a></p>
-                    """),
+                HtmlBody: EmailBranding.System(verifyBody)),
             cancellationToken);
 
         var accessToken = tokenService.IssueToken(user);

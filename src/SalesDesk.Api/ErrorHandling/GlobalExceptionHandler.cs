@@ -29,6 +29,12 @@ public sealed class GlobalExceptionHandler(IProblemDetailsService problemDetails
             NotFoundException => (StatusCodes.Status404NotFound, "Resource not found"),
             UnauthorizedAccessException => (StatusCodes.Status401Unauthorized, "Authentication failed"),
             ForbiddenException => (StatusCodes.Status403Forbidden, "Forbidden"),
+            // TASK-033: AI parsing isn't configured on this server at all (no
+            // Gemini:ApiKey) versus it's configured but the provider call itself
+            // failed — distinct statuses so the frontend (and an operator reading
+            // logs) can tell "nobody set this up" from "it broke just now".
+            AiParsingUnavailableException => (StatusCodes.Status503ServiceUnavailable, "AI parsing unavailable"),
+            AiParsingFailedException => (StatusCodes.Status502BadGateway, "AI parsing failed"),
             ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request"),
             // A business-rule/state conflict (e.g. converting a quote that isn't
             // Accepted) — not a malformed request (400) and not a database-level

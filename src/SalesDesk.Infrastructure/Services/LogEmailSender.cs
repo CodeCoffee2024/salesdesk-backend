@@ -18,8 +18,8 @@ public sealed class LogEmailSender(ILogger<LogEmailSender> logger) : IEmailSende
     public Task SendAsync(EmailMessage message, CancellationToken cancellationToken)
     {
         logger.LogInformation(
-            "Email (not sent — no provider configured): To={To} Cc={Cc} Subject={Subject}",
-            message.To, message.Cc ?? "(none)", message.Subject);
+            "Email (not sent, no provider configured): To={To} Cc={Cc} ReplyTo={ReplyTo} Subject={Subject}",
+            message.To, message.Cc ?? "(none)", message.ReplyTo ?? "(none)", message.Subject);
 
         return Task.CompletedTask;
     }

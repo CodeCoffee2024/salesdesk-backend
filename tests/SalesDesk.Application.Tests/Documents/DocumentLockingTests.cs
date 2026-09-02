@@ -38,7 +38,7 @@ public class DocumentLockingTests
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
         var signHandler = new SignDocumentCommandHandler(
-            fixture.CreateContext(), DateTime, new WorkspacePushNotifier(fixture.CreateContext(), new FakePushNotificationSender()), new FakePublicLinkBuilder());
+            fixture.CreateContext(), DateTime, new WorkspacePushNotifier(fixture.CreateContext(), new FakePushNotificationSender()), new FakePublicLinkBuilder(), new FakeEmailSender());
         await signHandler.Handle(
             new SignDocumentCommand(document.PublicToken, "Maya Chen", "maya@northstar.studio", true, SignatureType.Drawn, "data:image/png;base64,abc==", "203.0.113.5", "Mozilla/5.0"),
             CancellationToken.None);
@@ -64,7 +64,7 @@ public class DocumentLockingTests
     {
         var (fixture, currentUser, documentId, _) = await SeedSignedDocumentAsync();
         using var _1 = fixture;
-        var handler = new UpdateDocumentStatusCommandHandler(fixture.CreateContext(), fixture.Mapper, currentUser);
+        var handler = new UpdateDocumentStatusCommandHandler(fixture.CreateContext(), fixture.Mapper, currentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
 
         var act = () => handler.Handle(new UpdateDocumentStatusCommand(documentId, DocumentStatus.Paid), CancellationToken.None);
 

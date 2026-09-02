@@ -14,6 +14,7 @@ Target: Railway (Hobby, ~$5/mo) or Render (Starter web service $7/mo + managed P
    | `ConnectionStrings__SalesDesk` | Railway's injected `${{Postgres.DATABASE_URL}}` reference (or the Render Postgres connection string) |
    | `Jwt__Secret` | A long random secret, generated once and stored only in the platform (`openssl rand -base64 48`) |
    | `Cors__AllowedOrigins__0` | The deployed frontend's URL, e.g. `https://app.salesdesk.com` |
+   | `Gemini__ApiKey` | (optional, TASK-033) A Gemini API key from [aistudio.google.com](https://aistudio.google.com) — enables AI text-parsing on the document create form. Leave unset to ship with that feature disabled (it fails with a clear 503 rather than an error). |
 
    Never put any of these in `appsettings.json`, a GitHub Actions workflow file, or repository/Actions "variables" (non-secret) settings — only in the deployment platform's own secret store, per the guardrail in TASK-020. `appsettings.json` ships with empty placeholders for exactly this reason; the app throws at startup if `Jwt:Secret` is missing so a misconfigured deploy fails loudly instead of running with a default key.
 
@@ -24,7 +25,7 @@ Target: Railway (Hobby, ~$5/mo) or Render (Starter web service $7/mo + managed P
 `.github/workflows/deploy-api.yml` runs on every push/PR:
 
 1. `test` job — restores, builds, and runs the Domain + Application unit test suites.
-2. `deploy` job — only on push to `main`, and only after `test` passes — installs the Railway CLI and runs `railway up`, which builds `infrastructure/docker/api.Dockerfile` on Railway's infrastructure and releases it.
+2. `deploy` job — only on push to `master`, and only after `test` passes — installs the Railway CLI and runs `railway up`, which builds `infrastructure/docker/api.Dockerfile` on Railway's infrastructure and releases it.
 
 Migrations run automatically: `Program.cs` calls `dbContext.Database.MigrateAsync()` unconditionally on startup (see [README.md](README.md)), so a new release migrates the production database itself — there's no separate migration step in the pipeline.
 
