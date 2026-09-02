@@ -152,14 +152,14 @@ public class WorkspaceTests
     }
 
     [Fact]
-    public void GrantEarlyBirdPremium_upgrades_to_Premium_expiring_365_days_from_the_given_timestamp()
+    public void GrantEarlyBirdPro_upgrades_to_Pro_expiring_365_days_from_the_given_timestamp()
     {
         var workspace = new Workspace("Northline", "hello@northline.studio");
         var registeredAt = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
 
-        workspace.GrantEarlyBirdPremium(registeredAt);
+        workspace.GrantEarlyBirdPro(registeredAt);
 
-        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Premium);
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Pro);
         workspace.SubscriptionEndDate.Should().Be(registeredAt.AddDays(365));
         workspace.IsEarlyBirdPromo.Should().BeTrue();
     }

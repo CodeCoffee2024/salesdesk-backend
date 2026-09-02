@@ -85,6 +85,15 @@ public static class DependencyInjection
             services.AddSingleton<IQuoteTextParser, UnconfiguredQuoteTextParser>();
         }
 
+        // Payment processing (TASK-038) has no real provider wired up yet — no
+        // PayMongo/Stripe/PayPal account exists for this project to date, so
+        // there's nothing to conditionally switch on the way Gemini/Resend/VAPID
+        // above do. Every checkout attempt fails clearly (see
+        // UnconfiguredPaymentGatewayService) until real credentials exist; add the
+        // same `if (configured) { real impl } else { fallback }` shape above once
+        // they do.
+        services.AddSingleton<IPaymentGatewayService, UnconfiguredPaymentGatewayService>();
+
         // Web Push (TASK-027) only goes live once a VAPID keypair is configured —
         // otherwise the view/sign/revision-request notification paths fall back
         // to a log-only sender. See docs/research/TASK-DEPLOYMENT.md.

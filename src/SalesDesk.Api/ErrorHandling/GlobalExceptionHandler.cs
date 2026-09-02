@@ -35,6 +35,13 @@ public sealed class GlobalExceptionHandler(IProblemDetailsService problemDetails
             // logs) can tell "nobody set this up" from "it broke just now".
             AiParsingUnavailableException => (StatusCodes.Status503ServiceUnavailable, "AI parsing unavailable"),
             AiParsingFailedException => (StatusCodes.Status502BadGateway, "AI parsing failed"),
+            // TASK-038: no payment provider is configured yet — same "server-side
+            // feature isn't set up" shape as AI parsing above, not a client error.
+            PaymentGatewayUnavailableException => (StatusCodes.Status503ServiceUnavailable, "Payment processing unavailable"),
+            // TASK-038: the Free-tier monthly document cap — the request itself is
+            // well-formed, the account just can't do this right now without
+            // upgrading, which is what 402 means.
+            PlanLimitExceededException => (StatusCodes.Status402PaymentRequired, "Plan limit reached"),
             ArgumentException => (StatusCodes.Status400BadRequest, "Invalid request"),
             // A business-rule/state conflict (e.g. converting a quote that isn't
             // Accepted) — not a malformed request (400) and not a database-level

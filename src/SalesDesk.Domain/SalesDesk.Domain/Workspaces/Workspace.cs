@@ -30,10 +30,10 @@ public sealed class Workspace : Entity
     /// <summary>Maximum documents this workspace may issue. Null means unlimited.</summary>
     public int? DocumentQuota { get; private set; }
 
-    /// <summary>TASK-031: Free for every workspace unless upgraded — see <see cref="GrantEarlyBirdPremium"/>.</summary>
+    /// <summary>TASK-031: Free for every workspace unless upgraded — see <see cref="GrantEarlyBirdPro"/>.</summary>
     public SubscriptionTier SubscriptionTier { get; private set; }
 
-    /// <summary>When <see cref="SubscriptionTier"/> Premium access lapses. Null for Free, and (today) also null for a Premium grant that isn't time-boxed — the early-bird promo is the only path to Premium so far, and always sets this.</summary>
+    /// <summary>When a paid <see cref="SubscriptionTier"/> lapses. Null for Free, and (today) also null for a paid grant that isn't time-boxed — the early-bird promo is the only path to a paid tier so far, and always sets this.</summary>
     public DateTimeOffset? SubscriptionEndDate { get; private set; }
 
     /// <summary>True for one of the first 100 eligible accounts registered — drives the "Early 100 Free Year" badge on /settings/billing. Distinct from SubscriptionTier because a future non-promo Premium upgrade shouldn't retroactively claim this badge.</summary>
@@ -99,18 +99,17 @@ public sealed class Workspace : Entity
     }
 
     /// <summary>
-    /// TASK-031: grants the "Early 100 Free Year" promo — PREMIUM tier with a
-    /// $0.00 billing override (there's no billing/invoicing of the workspace
-    /// itself yet, so "billing override" just means SubscriptionTier reads
-    /// Premium without any charge ever being raised for it) expiring exactly 365
-    /// days from <paramref name="registeredAtUtc"/>. Called from
-    /// RegisterCommandHandler only immediately after
-    /// IApplicationDbContext.TryReserveEarlyBirdPromoSlotAsync has confirmed this
-    /// registration is the 100th or earlier — never speculatively.
+    /// TASK-031: grants the "Early 100 Free Year" promo — PRO tier with a $0.00
+    /// billing override (there's no billing/invoicing of the workspace itself
+    /// yet, so "billing override" just means SubscriptionTier reads Pro without
+    /// any charge ever being raised for it) expiring exactly 365 days from
+    /// <paramref name="registeredAtUtc"/>. Called from RegisterCommandHandler
+    /// only immediately after IApplicationDbContext.TryReserveEarlyBirdPromoSlotAsync
+    /// has confirmed this registration is the 100th or earlier — never speculatively.
     /// </summary>
-    public void GrantEarlyBirdPremium(DateTimeOffset registeredAtUtc)
+    public void GrantEarlyBirdPro(DateTimeOffset registeredAtUtc)
     {
-        SubscriptionTier = SubscriptionTier.Premium;
+        SubscriptionTier = SubscriptionTier.Pro;
         SubscriptionEndDate = registeredAtUtc.AddDays(365);
         IsEarlyBirdPromo = true;
     }

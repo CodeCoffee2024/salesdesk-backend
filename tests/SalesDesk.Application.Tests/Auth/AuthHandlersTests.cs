@@ -404,7 +404,7 @@ public class AuthHandlersTests
             new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         var workspace = fixture.CreateContext().Workspaces.Single(w => w.Id == result.User.WorkspaceId);
-        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Premium);
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Pro);
         workspace.IsEarlyBirdPromo.Should().BeTrue();
         workspace.SubscriptionEndDate.Should().NotBeNull();
     }

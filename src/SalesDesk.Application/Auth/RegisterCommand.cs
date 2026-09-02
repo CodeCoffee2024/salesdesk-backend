@@ -70,7 +70,7 @@ public sealed class RegisterCommandHandler(
         // TryReserveEarlyBirdPromoSlotAsync's own doc comment.
         if (await context.TryReserveEarlyBirdPromoSlotAsync(cancellationToken))
         {
-            workspace.GrantEarlyBirdPremium(dateTime.UtcNow);
+            workspace.GrantEarlyBirdPro(dateTime.UtcNow);
         }
 
         context.Workspaces.Add(workspace);

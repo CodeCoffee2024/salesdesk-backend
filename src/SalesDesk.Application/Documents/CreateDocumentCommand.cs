@@ -2,6 +2,7 @@ using AutoMapper;
 using FluentValidation;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SalesDesk.Application.Billing;
 using SalesDesk.Application.Common.Exceptions;
 using SalesDesk.Application.Common.Extensions;
 using SalesDesk.Application.Common.Interfaces;
@@ -78,6 +79,28 @@ public sealed class CreateDocumentCommandHandler(
         var clientCountry = request.ClientCountry ?? customer.Country ?? workspace?.Country;
 
         var issueDate = DateOnly.FromDateTime(dateTime.UtcNow.Date);
+
+        // TASK-038: Free tier's "5 active documents/month" cap. No workspace row
+        // (e.g. some tests) means no tier to enforce — same permissive fallback as
+        // the currency/country defaults above. Checked before reserving a document
+        // number so a blocked attempt never burns one.
+        if (workspace is not null)
+        {
+            var monthlyLimit = PricingCatalog.MonthlyDocumentLimit(workspace.SubscriptionTier);
+            if (monthlyLimit is not null)
+            {
+                var monthStart = new DateOnly(issueDate.Year, issueDate.Month, 1);
+                var issuedThisMonth = await context.Documents
+                    .CountAsync(d => d.WorkspaceId == workspaceId && d.IssueDate >= monthStart, cancellationToken);
+
+                if (issuedThisMonth >= monthlyLimit)
+                {
+                    throw new PlanLimitExceededException(
+                        $"The Free plan allows {monthlyLimit} documents per month. Upgrade to Pro for unlimited documents.");
+                }
+            }
+        }
+
         var documentNumber = await DocumentNumbering.GenerateNextAsync(context, workspaceId, request.Type, issueDate, cancellationToken);
 
         var document = new Document(workspaceId, documentNumber, request.Type, customer.Id, template.Id, issueDate, request.DueDate, currency, clientCountry);
