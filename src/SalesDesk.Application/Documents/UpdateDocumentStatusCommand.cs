@@ -1,6 +1,7 @@
 using AutoMapper;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SalesDesk.Application.Common.Email;
 using SalesDesk.Application.Common.Exceptions;
 using SalesDesk.Application.Common.Extensions;
 using SalesDesk.Application.Common.Interfaces;
@@ -57,6 +58,45 @@ public sealed class UpdateDocumentStatusCommandHandler(
             await DocumentDispatchNotifier.NotifyAsync(context, emailSender, linkBuilder, updated, workspaceId, cancellationToken);
         }
 
+        // Every other lifecycle action the workspace takes on a document (marking
+        // a quote Accepted, an invoice Paid) is worth telling the client about too
+        // — not just the client-initiated ones (viewing, e-signing, requesting a
+        // revision) that already email back to the workspace above.
+        if (request.Status is DocumentStatus.Accepted or DocumentStatus.Paid && previousStatus != request.Status)
+        {
+            await NotifyCustomerOfStatusChangeAsync(updated, request.Status, workspaceId, cancellationToken);
+        }
+
         return mapper.Map<DocumentDto>(updated);
+    }
+
+    private async Task NotifyCustomerOfStatusChangeAsync(Document document, DocumentStatus status, Guid workspaceId, CancellationToken cancellationToken)
+    {
+        if (document.Customer is null)
+        {
+            return;
+        }
+
+        var workspace = await context.Workspaces.FirstOrDefaultAsync(w => w.Id == workspaceId, cancellationToken);
+        if (workspace is null)
+        {
+            return;
+        }
+
+        var documentUrl = linkBuilder.BuildDocumentUrl(document.PublicToken);
+        var (subject, bodyLine) = status == DocumentStatus.Paid
+            ? ($"Payment received for {document.DocumentNumber}", $"<p>{workspace.Name} has marked invoice <strong>{document.DocumentNumber}</strong> ({document.Total:C}) as <strong>paid</strong>. Thanks for your business!</p>")
+            : ($"{document.DocumentNumber} marked as accepted", $"<p>{workspace.Name} has marked quote <strong>{document.DocumentNumber}</strong> ({document.Total:C}) as <strong>accepted</strong>.</p>");
+
+        var emailBody = $"""
+            <p>Hi {document.Customer.Name},</p>
+            {bodyLine}
+            {EmailBranding.CtaButton("View document", documentUrl)}
+            """;
+
+        await emailSender.SendAsync(
+            new EmailMessage(document.Customer.Email, Cc: null, subject,
+                EmailBranding.Workspace(workspace.Name, workspace.LogoUrl, workspace.Tagline, workspace.Address, workspace.Email, emailBody), ReplyTo: workspace.Email),
+            cancellationToken);
     }
 }

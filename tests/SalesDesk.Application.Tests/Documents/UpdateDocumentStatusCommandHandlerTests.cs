@@ -4,6 +4,7 @@ using SalesDesk.Application.Documents;
 using SalesDesk.Domain.Customers;
 using SalesDesk.Domain.Documents;
 using SalesDesk.Domain.Templates;
+using SalesDesk.Domain.Workspaces;
 
 namespace SalesDesk.Application.Tests.Documents;
 
@@ -33,6 +34,32 @@ public class UpdateDocumentStatusCommandHandlerTests
 
         result.Status.Should().Be(DocumentStatus.Sent);
         result.IsDispatched.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Marking_an_invoice_paid_emails_the_customer_a_confirmation()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+        var currentUser = new FakeCurrentUserService(workspace.Id);
+        var customer = new Customer(workspace.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+        var template = new Template(workspace.Id, "Studio Standard", isDefault: true);
+        var document = new Document(workspace.Id, "INV-2026-011", DocumentType.Invoice, customer.Id, template.Id, new DateOnly(2026, 8, 25), new DateOnly(2026, 9, 8));
+        document.AddLineItem("Design work", 1m, 500m);
+        document.ChangeStatus(DocumentStatus.Sent);
+
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        fixture.Context.Documents.Add(document);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var emailSender = new FakeEmailSender();
+        var handler = new UpdateDocumentStatusCommandHandler(fixture.CreateContext(), fixture.Mapper, currentUser, emailSender, new FakePublicLinkBuilder(), DateTime);
+
+        await handler.Handle(new UpdateDocumentStatusCommand(document.Id, DocumentStatus.Paid), CancellationToken.None);
+
+        emailSender.SentMessages.Should().ContainSingle(m => m.To == customer.Email && m.Subject.Contains("Payment received"));
     }
 
     [Fact]

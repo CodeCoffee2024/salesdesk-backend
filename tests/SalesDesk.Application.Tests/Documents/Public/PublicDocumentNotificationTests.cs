@@ -37,8 +37,8 @@ public class PublicDocumentNotificationTests
         return (fixture, workspace.Id, document);
     }
 
-    private static GetPublicDocumentByTokenQueryHandler MakeViewHandler(SqliteApplicationDbContextFixture fixture, FakePushNotificationSender sender) =>
-        new(fixture.CreateContext(), new WorkspacePushNotifier(fixture.CreateContext(), sender), new FakePublicLinkBuilder(), DateTime);
+    private static GetPublicDocumentByTokenQueryHandler MakeViewHandler(SqliteApplicationDbContextFixture fixture, FakePushNotificationSender sender, FakeEmailSender? emailSender = null) =>
+        new(fixture.CreateContext(), new WorkspacePushNotifier(fixture.CreateContext(), sender), new FakePublicLinkBuilder(), DateTime, emailSender ?? new FakeEmailSender());
 
     [Fact]
     public async Task Viewing_a_document_for_the_first_time_sends_one_push_notification()
@@ -50,6 +50,18 @@ public class PublicDocumentNotificationTests
         await handler.Handle(new GetPublicDocumentByTokenQuery(document.PublicToken), CancellationToken.None);
 
         sender.SentNotifications.Should().ContainSingle(n => n.Title.Contains(document.DocumentNumber));
+    }
+
+    [Fact]
+    public async Task Viewing_a_document_for_the_first_time_also_emails_the_workspace()
+    {
+        var (fixture, _, document) = await SeedAsync();
+        var emailSender = new FakeEmailSender();
+        var handler = MakeViewHandler(fixture, new FakePushNotificationSender(), emailSender);
+
+        await handler.Handle(new GetPublicDocumentByTokenQuery(document.PublicToken), CancellationToken.None);
+
+        emailSender.SentMessages.Should().ContainSingle(m => m.To == "hello@northline.studio" && m.Subject.Contains(document.DocumentNumber));
     }
 
     [Fact]

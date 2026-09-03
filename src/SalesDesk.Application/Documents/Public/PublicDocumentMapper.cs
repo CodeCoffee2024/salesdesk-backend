@@ -37,6 +37,7 @@ internal static class PublicDocumentMapper
             }).ToList(),
             IsSigned = document.Signature is not null,
             SignedByName = document.Signature?.SignerName,
-            SignedAtUtc = document.Signature?.SignedAtUtc
+            SignedAtUtc = document.Signature?.SignedAtUtc,
+            SignatureImageDataUrl = document.Signature?.SignatureImageDataUrl
         };
 }

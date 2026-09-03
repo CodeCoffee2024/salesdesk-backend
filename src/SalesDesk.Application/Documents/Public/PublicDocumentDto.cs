@@ -44,4 +44,7 @@ public sealed class PublicDocumentDto
     public string? SignedByName { get; init; }
 
     public DateTimeOffset? SignedAtUtc { get; init; }
+
+    /// <summary>PNG data URL of the client's own e-signature — safe to hand back on this same public link, since it's the client viewing what they themselves signed.</summary>
+    public string? SignatureImageDataUrl { get; init; }
 }
