@@ -92,7 +92,7 @@ public sealed class SignDocumentCommandHandler(
         // owner, not the client. Still workspace-branded (it's their own business's
         // inbox), unlike the platform-only System() wrapper used for auth emails.
         var emailBody = $"""
-            <p><strong>{request.SignerName}</strong> just signed {document.Type.ToString().ToLowerInvariant()} <strong>{document.DocumentNumber}</strong> ({document.Total:C}).</p>
+            <p><strong>{request.SignerName}</strong> just signed {document.Type.ToString().ToLowerInvariant()} <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}).</p>
             {EmailBranding.CtaButton("View document", previewUrl)}
             """;
         await emailSender.SendAsync(

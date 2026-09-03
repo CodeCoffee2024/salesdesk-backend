@@ -85,8 +85,8 @@ public sealed class UpdateDocumentStatusCommandHandler(
 
         var documentUrl = linkBuilder.BuildDocumentUrl(document.PublicToken);
         var (subject, bodyLine) = status == DocumentStatus.Paid
-            ? ($"Payment received for {document.DocumentNumber}", $"<p>{workspace.Name} has marked invoice <strong>{document.DocumentNumber}</strong> ({document.Total:C}) as <strong>paid</strong>. Thanks for your business!</p>")
-            : ($"{document.DocumentNumber} marked as accepted", $"<p>{workspace.Name} has marked quote <strong>{document.DocumentNumber}</strong> ({document.Total:C}) as <strong>accepted</strong>.</p>");
+            ? ($"Payment received for {document.DocumentNumber}", $"<p>{workspace.Name} has marked invoice <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}) as <strong>paid</strong>. Thanks for your business!</p>")
+            : ($"{document.DocumentNumber} marked as accepted", $"<p>{workspace.Name} has marked quote <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}) as <strong>accepted</strong>.</p>");
 
         var emailBody = $"""
             <p>Hi {document.Customer.Name},</p>

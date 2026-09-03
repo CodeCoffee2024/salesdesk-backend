@@ -17,7 +17,7 @@ internal static class ReminderEmailTemplates
                 $"Following up on {document.DocumentNumber}",
                 $"""
                 <p>Hi {customerName},</p>
-                <p>Just checking in on quote <strong>{document.DocumentNumber}</strong> ({document.Total:C}). Let us know if you have any questions.</p>
+                <p>Just checking in on quote <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}). Let us know if you have any questions.</p>
                 {EmailBranding.CtaButton("View quote", documentUrl)}
                 """),
 
@@ -25,7 +25,7 @@ internal static class ReminderEmailTemplates
                 $"{document.DocumentNumber} is due {document.DueDate:MMM d}",
                 $"""
                 <p>Hi {customerName},</p>
-                <p>A friendly reminder that invoice <strong>{document.DocumentNumber}</strong> ({document.Total:C}) is due on {document.DueDate:MMM d, yyyy}.</p>
+                <p>A friendly reminder that invoice <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}) is due on {document.DueDate:MMM d, yyyy}.</p>
                 {EmailBranding.CtaButton("View invoice", documentUrl)}
                 """),
 
@@ -33,7 +33,7 @@ internal static class ReminderEmailTemplates
                 $"{document.DocumentNumber} is now overdue",
                 $"""
                 <p>Hi {customerName},</p>
-                <p>Invoice <strong>{document.DocumentNumber}</strong> ({document.Total:C}) was due on {document.DueDate:MMM d, yyyy} and is now overdue.</p>
+                <p>Invoice <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}) was due on {document.DueDate:MMM d, yyyy} and is now overdue.</p>
                 {EmailBranding.CtaButton("View invoice", documentUrl)}
                 """),
 
@@ -41,7 +41,7 @@ internal static class ReminderEmailTemplates
                 $"Final notice: {document.DocumentNumber} is significantly overdue",
                 $"""
                 <p>Hi {customerName},</p>
-                <p>This is a final notice: invoice <strong>{document.DocumentNumber}</strong> ({document.Total:C}) was due on {document.DueDate:MMM d, yyyy} and remains unpaid.</p>
+                <p>This is a final notice: invoice <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}) was due on {document.DueDate:MMM d, yyyy} and remains unpaid.</p>
                 {EmailBranding.CtaButton("View invoice", documentUrl)}
                 """),
 

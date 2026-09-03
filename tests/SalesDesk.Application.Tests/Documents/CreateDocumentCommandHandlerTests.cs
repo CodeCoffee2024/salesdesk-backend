@@ -249,6 +249,33 @@ public class CreateDocumentCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_dispatch_email_uses_the_documents_own_currency_symbol_not_the_servers_default()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var workspace = new Workspace("Northline", "hello@northline.studio", country: "PH", defaultCurrency: "PHP");
+        var scopedCurrentUser = new FakeCurrentUserService(workspace.Id);
+        var customer = new Customer(workspace.Id, "Priya Nair", "Goodform Labs", "priya@goodform.io");
+        var template = new Template(workspace.Id, "Studio Standard", isDefault: true);
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var emailSender = new FakeEmailSender();
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser, emailSender, new FakePublicLinkBuilder());
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 450m, null)],
+            Dispatch: true);
+
+        await handler.Handle(command, CancellationToken.None);
+
+        emailSender.SentMessages.Should().ContainSingle();
+        emailSender.SentMessages[0].HtmlBody.Should().Contain("₱450.00");
+        emailSender.SentMessages[0].HtmlBody.Should().NotContain("$450.00");
+    }
+
+    [Fact]
     public async Task Handle_rejects_a_line_item_with_zero_quantity()
     {
         using var fixture = new SqliteApplicationDbContextFixture();

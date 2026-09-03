@@ -26,7 +26,7 @@ internal static class DocumentNotificationEmailTemplates
 
         var body = $"""
             <p>Hi {customerName},</p>
-            <p>{workspace.Name} sent you {(isQuote ? "a quote" : "an invoice")}, <strong>{document.DocumentNumber}</strong>, totaling <strong>{document.Total:C}</strong>.</p>
+            <p>{workspace.Name} sent you {(isQuote ? "a quote" : "an invoice")}, <strong>{document.DocumentNumber}</strong>, totaling <strong>{CurrencyFormatter.Format(document.Total, document.Currency)}</strong>.</p>
             {dateLine}
             {EmailBranding.CtaButton(isQuote ? "View quote" : "View and pay invoice", documentUrl)}
             """;
