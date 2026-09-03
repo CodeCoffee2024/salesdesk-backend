@@ -4,6 +4,7 @@ using SalesDesk.Application.Documents;
 using SalesDesk.Domain.Customers;
 using SalesDesk.Domain.Documents;
 using SalesDesk.Domain.Templates;
+using SalesDesk.Domain.Users;
 using SalesDesk.Domain.Workspaces;
 
 namespace SalesDesk.Application.Tests.Documents;
@@ -189,6 +190,62 @@ public class CreateDocumentCommandHandlerTests
 
         result.Currency.Should().Be("EUR");
         result.ClientCountry.Should().Be("DE");
+    }
+
+    [Fact]
+    public async Task Handle_blocks_a_sixth_document_this_month_on_the_Free_tier()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var workspace = new Workspace("Northline", "hello@northline.studio"); // Free tier by default — 5 documents/month.
+        var scopedCurrentUser = new FakeCurrentUserService(workspace.Id);
+        var customer = new Customer(workspace.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+        var template = new Template(workspace.Id, "Studio Standard", isDefault: true);
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
+
+        for (var i = 0; i < 5; i++)
+        {
+            await handler.Handle(command, CancellationToken.None);
+        }
+
+        var act = () => handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<PlanLimitExceededException>();
+    }
+
+    [Fact]
+    public async Task Handle_exempts_SystemAdmin_from_the_Free_tier_document_cap()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var workspace = new Workspace("SalesDesk HQ", "ops@salesdesk.app"); // Free tier by default, same as the seeded platform workspace.
+        var systemAdmin = new FakeCurrentUserService(workspace.Id, role: Role.SystemAdmin);
+        var customer = new Customer(workspace.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+        var template = new Template(workspace.Id, "Studio Standard", isDefault: true);
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), systemAdmin, new FakeEmailSender(), new FakePublicLinkBuilder());
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
+
+        for (var i = 0; i < 6; i++)
+        {
+            await handler.Handle(command, CancellationToken.None);
+        }
+
+        var act = () => handler.Handle(command, CancellationToken.None);
+
+        await act.Should().NotThrowAsync();
     }
 
     [Fact]

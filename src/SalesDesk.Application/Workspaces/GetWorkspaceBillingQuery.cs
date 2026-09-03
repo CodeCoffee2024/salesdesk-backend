@@ -33,6 +33,12 @@ public sealed class GetWorkspaceBillingQueryHandler(IApplicationDbContext contex
             .OrderByDescending(s => s.SubmittedAtUtc)
             .FirstOrDefault();
 
+        var pendingUpgradeRequest = (await context.SubscriptionUpgradeRequests
+            .Where(r => r.WorkspaceId == workspaceId && !r.IsApproved)
+            .ToListAsync(cancellationToken))
+            .OrderByDescending(r => r.RequestedAtUtc)
+            .FirstOrDefault();
+
         return new WorkspaceBillingDto
         {
             SubscriptionTier = workspace.SubscriptionTier.ToString(),
@@ -47,6 +53,14 @@ public sealed class GetWorkspaceBillingQueryHandler(IApplicationDbContext contex
                     GCashReferenceNumber = pendingSubmission.GCashReferenceNumber,
                     Tier = pendingSubmission.Tier.ToString(),
                     SubmittedAtUtc = pendingSubmission.SubmittedAtUtc
+                },
+            PendingUpgradeRequest = pendingUpgradeRequest is null
+                ? null
+                : new PendingUpgradeRequestDto
+                {
+                    Tier = pendingUpgradeRequest.Tier.ToString(),
+                    BillingCycle = pendingUpgradeRequest.BillingCycle,
+                    RequestedAtUtc = pendingUpgradeRequest.RequestedAtUtc
                 }
         };
     }

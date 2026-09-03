@@ -26,4 +26,7 @@ public interface IPublicLinkBuilder
     /// there's no frontend page to route through first.
     /// </summary>
     string BuildApproveGCashSubscriptionUrl(string rawToken);
+
+    /// <summary>Same shape as <see cref="BuildApproveGCashSubscriptionUrl"/> — a direct API link, no payment claim to verify, just a business decision to approve — for the generic "no payment method configured" upgrade-request flow.</summary>
+    string BuildApproveUpgradeRequestUrl(string rawToken);
 }

@@ -47,6 +47,8 @@ public interface IApplicationDbContext
 
     DbSet<GCashPaymentSubmission> GCashPaymentSubmissions { get; }
 
+    DbSet<SubscriptionUpgradeRequest> SubscriptionUpgradeRequests { get; }
+
     /// <summary>
     /// TASK-031: atomically claims the next "Early 100 Free Year" promo slot and
     /// returns whether this caller got one. Implemented as a single

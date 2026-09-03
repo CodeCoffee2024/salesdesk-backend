@@ -42,6 +42,8 @@ public sealed class SalesDeskDbContext(DbContextOptions<SalesDeskDbContext> opti
 
     public DbSet<GCashPaymentSubmission> GCashPaymentSubmissions => Set<GCashPaymentSubmission>();
 
+    public DbSet<SubscriptionUpgradeRequest> SubscriptionUpgradeRequests => Set<SubscriptionUpgradeRequest>();
+
     /// <inheritdoc cref="IApplicationDbContext.TryReserveEarlyBirdPromoSlotAsync"/>
     public async Task<bool> TryReserveEarlyBirdPromoSlotAsync(CancellationToken cancellationToken)
     {

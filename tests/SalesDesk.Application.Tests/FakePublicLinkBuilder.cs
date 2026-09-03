@@ -13,4 +13,6 @@ public sealed class FakePublicLinkBuilder : IPublicLinkBuilder
     public string BuildVerifyEmailUrl(string rawToken) => $"https://app.example.test/auth/verify-email?token={rawToken}";
 
     public string BuildApproveGCashSubscriptionUrl(string rawToken) => $"https://api.example.test/api/admin/subscriptions/approve?token={rawToken}";
+
+    public string BuildApproveUpgradeRequestUrl(string rawToken) => $"https://api.example.test/api/admin/subscriptions/approve-upgrade-request?token={rawToken}";
 }

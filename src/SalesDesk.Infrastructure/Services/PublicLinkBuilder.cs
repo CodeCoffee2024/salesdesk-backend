@@ -26,4 +26,7 @@ public sealed class PublicLinkBuilder(string frontendBaseUrl, string apiBaseUrl)
 
     public string BuildApproveGCashSubscriptionUrl(string rawToken) =>
         $"{apiBaseUrl.TrimEnd('/')}/api/admin/subscriptions/approve?token={Uri.EscapeDataString(rawToken)}";
+
+    public string BuildApproveUpgradeRequestUrl(string rawToken) =>
+        $"{apiBaseUrl.TrimEnd('/')}/api/admin/subscriptions/approve-upgrade-request?token={Uri.EscapeDataString(rawToken)}";
 }

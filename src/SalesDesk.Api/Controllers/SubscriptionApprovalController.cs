@@ -40,6 +40,32 @@ public sealed class SubscriptionApprovalController(ISender sender) : ControllerB
         }
     }
 
+    /// <summary>
+    /// The "Approve upgrade" link inside the generic (no-payment-method-available)
+    /// upgrade-request admin notification email — same unauthenticated, token-gated
+    /// shape as <see cref="Approve"/> above, for RequestSubscriptionUpgradeCommand's
+    /// submissions instead of GCash's.
+    /// </summary>
+    [AllowAnonymous]
+    [HttpGet("approve-upgrade-request")]
+    public async Task<ContentResult> ApproveUpgradeRequest([FromQuery] string token, CancellationToken cancellationToken)
+    {
+        try
+        {
+            var result = await sender.Send(new ApproveSubscriptionUpgradeRequestCommand(token), cancellationToken);
+            var heading = result.WasAlreadyApproved ? "Already approved" : "Subscription approved";
+            var detail = result.WasAlreadyApproved
+                ? $"{result.WorkspaceName} was already upgraded to {result.Tier} (active through {result.ExpiresAtUtc:MMM d, yyyy})."
+                : $"{result.WorkspaceName} is now on {result.Tier} ({result.BillingCycle}), active through {result.ExpiresAtUtc:MMM d, yyyy}. A confirmation email has been sent.";
+
+            return Page(heading, detail, isError: false);
+        }
+        catch (NotFoundException)
+        {
+            return Page("Link not recognized", "This approval link doesn't match any pending upgrade request. It may have already been used with a different token, or the request no longer exists.", isError: true);
+        }
+    }
+
     private ContentResult Page(string heading, string detail, bool isError) =>
         new()
         {

@@ -13,6 +13,8 @@ public sealed record CreateCheckoutSessionRequest(string Tier, string BillingCyc
 public sealed record SubmitGCashPaymentRequest(
     string Tier, string BillingCycle, string GCashReferenceNumber, string SenderName, string SenderMobileNumber, string? ScreenshotDataUrl);
 
+public sealed record RequestSubscriptionUpgradeRequest(string Tier, string BillingCycle, string? Note);
+
 /// <summary>TASK-031/TASK-038: the current workspace's subscription tier, usage, and the regional pricing catalog for /settings/billing, plus the (currently stubbed — see UnconfiguredPaymentGatewayService) upgrade checkout flow.</summary>
 [ApiController]
 [Route("api/workspace/billing")]
@@ -58,6 +60,15 @@ public sealed class BillingController(ISender sender) : ControllerBase
         var result = await sender.Send(
             new SubmitGCashPaymentCommand(request.Tier, request.BillingCycle, request.GCashReferenceNumber, request.SenderName, request.SenderMobileNumber, request.ScreenshotDataUrl),
             cancellationToken);
+        return Ok(result);
+    }
+
+    /// <summary>POST /api/workspace/billing/upgrade-request — the fallback for any workspace with no configured payment method (not PH/GCash, no card gateway): asks the platform admin to activate the tier manually.</summary>
+    [Authorize(Policy = Policies.CanManage)]
+    [HttpPost("upgrade-request")]
+    public async Task<ActionResult<UpgradeRequestConfirmationDto>> RequestUpgrade([FromBody] RequestSubscriptionUpgradeRequest request, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new RequestSubscriptionUpgradeCommand(request.Tier, request.BillingCycle, request.Note), cancellationToken);
         return Ok(result);
     }
 }
