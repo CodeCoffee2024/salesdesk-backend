@@ -45,6 +45,7 @@ public sealed class DispatchDueRemindersCommandHandler(
         // "overdue" from DueDate itself rather than trusting Status for that.
         var candidates = await context.Documents
             .Include(d => d.Customer)
+            .Include(d => d.Activities)
             .Where(d => workspaceIds.Contains(d.WorkspaceId)
                 && (d.Status == DocumentStatus.Sent || d.Status == DocumentStatus.Overdue))
             .ToListAsync(cancellationToken);

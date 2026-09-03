@@ -276,6 +276,35 @@ public class CreateDocumentCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_dispatch_email_includes_the_activity_timeline_so_far()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+        var scopedCurrentUser = new FakeCurrentUserService(workspace.Id);
+        var customer = new Customer(workspace.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+        var template = new Template(workspace.Id, "Studio Standard", isDefault: true);
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var emailSender = new FakeEmailSender();
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser, emailSender, new FakePublicLinkBuilder());
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)],
+            Dispatch: true);
+
+        await handler.Handle(command, CancellationToken.None);
+
+        var body = emailSender.SentMessages.Single().HtmlBody;
+        body.Should().Contain("Activity so far");
+        body.Should().Contain("Sent to you");
+        // Created is drafting-only and must never reach the client's own inbox.
+        body.Should().NotContain("Document created");
+    }
+
+    [Fact]
     public async Task Handle_rejects_a_line_item_with_zero_quantity()
     {
         using var fixture = new SqliteApplicationDbContextFixture();

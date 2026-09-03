@@ -56,6 +56,7 @@ public sealed class RequestDocumentRevisionCommandHandler(
             <p><strong>{customerName}</strong> requested changes on <strong>{document.DocumentNumber}</strong>:</p>
             <p style="padding:12px 16px;background:#f4f5f9;border-radius:8px;">&ldquo;{System.Net.WebUtility.HtmlEncode(request.Feedback)}&rdquo;</p>
             {EmailBranding.CtaButton("View document", previewUrl)}
+            {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: false)}
             """;
         await emailSender.SendAsync(
             new EmailMessage(workspace.Email, Cc: null, $"Changes requested on {document.DocumentNumber}",

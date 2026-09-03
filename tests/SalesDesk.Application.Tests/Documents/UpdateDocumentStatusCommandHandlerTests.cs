@@ -59,7 +59,9 @@ public class UpdateDocumentStatusCommandHandlerTests
 
         await handler.Handle(new UpdateDocumentStatusCommand(document.Id, DocumentStatus.Paid), CancellationToken.None);
 
-        emailSender.SentMessages.Should().ContainSingle(m => m.To == customer.Email && m.Subject.Contains("Payment received"));
+        var sent = emailSender.SentMessages.Should().ContainSingle(m => m.To == customer.Email && m.Subject.Contains("Payment received")).Subject;
+        sent.HtmlBody.Should().Contain("Activity so far");
+        sent.HtmlBody.Should().Contain("Status updated");
     }
 
     [Fact]

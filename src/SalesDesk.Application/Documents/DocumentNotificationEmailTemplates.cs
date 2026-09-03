@@ -29,6 +29,7 @@ internal static class DocumentNotificationEmailTemplates
             <p>{workspace.Name} sent you {(isQuote ? "a quote" : "an invoice")}, <strong>{document.DocumentNumber}</strong>, totaling <strong>{CurrencyFormatter.Format(document.Total, document.Currency)}</strong>.</p>
             {dateLine}
             {EmailBranding.CtaButton(isQuote ? "View quote" : "View and pay invoice", documentUrl)}
+            {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true)}
             """;
 
         return (subject, EmailBranding.Workspace(workspace.Name, workspace.LogoUrl, workspace.Tagline, workspace.Address, workspace.Email, body));

@@ -99,6 +99,7 @@ public sealed class UpdateDocumentStatusCommandHandler(
             <p>Hi {document.Customer.Name},</p>
             {bodyLine}
             {EmailBranding.CtaButton("View document", documentUrl)}
+            {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true)}
             """;
 
         await emailSender.SendAsync(

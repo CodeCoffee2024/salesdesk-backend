@@ -96,6 +96,7 @@ public sealed class SignDocumentCommandHandler(
         var emailBody = $"""
             <p><strong>{request.SignerName}</strong> just signed {document.Type.ToString().ToLowerInvariant()} <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}).</p>
             {EmailBranding.CtaButton("View document", previewUrl)}
+            {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: false)}
             """;
         await emailSender.SendAsync(
             new EmailMessage(workspace.Email, Cc: null, $"{document.DocumentNumber} was signed",

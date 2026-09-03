@@ -62,6 +62,7 @@ public class PublicDocumentNotificationTests
         await handler.Handle(new GetPublicDocumentByTokenQuery(document.PublicToken), CancellationToken.None);
 
         emailSender.SentMessages.Should().ContainSingle(m => m.To == "hello@northline.studio" && m.Subject.Contains(document.DocumentNumber));
+        emailSender.SentMessages[0].HtmlBody.Should().Contain("Activity so far");
     }
 
     [Fact]
@@ -104,6 +105,24 @@ public class PublicDocumentNotificationTests
     }
 
     [Fact]
+    public async Task Signing_email_to_the_workspace_includes_the_activity_timeline()
+    {
+        var (fixture, _, document) = await SeedAsync();
+        var emailSender = new FakeEmailSender();
+        var handler = new SignDocumentCommandHandler(
+            fixture.CreateContext(), DateTime, new WorkspacePushNotifier(fixture.CreateContext(), new FakePushNotificationSender()), new FakePublicLinkBuilder(), emailSender);
+
+        await handler.Handle(
+            new SignDocumentCommand(document.PublicToken, "Maya Chen", "maya@northstar.studio", true, SignatureType.Drawn, "data:image/png;base64,abc==", "203.0.113.5", "Mozilla/5.0"),
+            CancellationToken.None);
+
+        var body = emailSender.SentMessages.Single().HtmlBody;
+        body.Should().Contain("Activity so far");
+        body.Should().Contain("Signed by the client");
+        body.Should().Contain("by Maya Chen");
+    }
+
+    [Fact]
     public async Task Requesting_a_revision_updates_status_and_sends_a_push_notification()
     {
         var (fixture, _, document) = await SeedAsync();
@@ -116,6 +135,21 @@ public class PublicDocumentNotificationTests
         result.Status.Should().Be(DocumentStatus.RevisionRequested);
         sender.SentNotifications.Should().ContainSingle(n => n.Body.Contains("Please change the color scheme"));
         result.Timeline.Should().ContainSingle(a => a.Type == DocumentActivityType.RevisionRequested && a.Detail == "Please change the color scheme.");
+    }
+
+    [Fact]
+    public async Task Revision_request_email_to_the_workspace_includes_the_activity_timeline()
+    {
+        var (fixture, _, document) = await SeedAsync();
+        var emailSender = new FakeEmailSender();
+        var handler = new RequestDocumentRevisionCommandHandler(
+            fixture.CreateContext(), DateTime, new WorkspacePushNotifier(fixture.CreateContext(), new FakePushNotificationSender()), new FakePublicLinkBuilder(), emailSender);
+
+        await handler.Handle(new RequestDocumentRevisionCommand(document.PublicToken, "Please change the color scheme."), CancellationToken.None);
+
+        var body = emailSender.SentMessages.Single().HtmlBody;
+        body.Should().Contain("Activity so far");
+        body.Should().Contain("Client requested changes");
     }
 
     [Fact]

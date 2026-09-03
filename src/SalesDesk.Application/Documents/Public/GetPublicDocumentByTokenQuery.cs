@@ -55,6 +55,7 @@ public sealed class GetPublicDocumentByTokenQueryHandler(
             var emailBody = $"""
                 <p><strong>{customerName}</strong> just opened {document.Type.ToString().ToLowerInvariant()} <strong>{document.DocumentNumber}</strong>.</p>
                 {EmailBranding.CtaButton("View document", previewUrl)}
+                {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: false)}
                 """;
             await emailSender.SendAsync(
                 new EmailMessage(workspace.Email, Cc: null, $"{document.DocumentNumber} was viewed",
