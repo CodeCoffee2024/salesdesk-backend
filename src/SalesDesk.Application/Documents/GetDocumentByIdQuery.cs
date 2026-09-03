@@ -26,6 +26,7 @@ public sealed class GetDocumentByIdQueryHandler(IApplicationDbContext context, I
             .Include(d => d.Template)
             .Include(d => d.LineItems)
             .Include(d => d.Signature)
+            .Include(d => d.Activities)
             .FirstOrDefaultAsync(d => d.Id == request.Id && d.WorkspaceId == workspaceId, cancellationToken)
             ?? throw new NotFoundException(nameof(Document), request.Id);
 

@@ -10,6 +10,17 @@ namespace SalesDesk.Application.Documents.Public;
 /// </summary>
 internal static class PublicDocumentMapper
 {
+    // Created (drafting, before the client ever had a link) and ReminderSent (they
+    // already got that as its own email — repeating it here is just noise) are the
+    // only two activity types withheld from the client's own timeline; everything
+    // else is exactly what happened to a document they already have full visibility
+    // into via their own view/sign/revision-request actions.
+    private static readonly HashSet<DocumentActivityType> ExcludedFromPublicTimeline =
+    [
+        DocumentActivityType.Created,
+        DocumentActivityType.ReminderSent
+    ];
+
     public static PublicDocumentDto ToDto(Document document, string workspaceName, string? workspaceLogoUrl) =>
         new()
         {
@@ -38,6 +49,11 @@ internal static class PublicDocumentMapper
             IsSigned = document.Signature is not null,
             SignedByName = document.Signature?.SignerName,
             SignedAtUtc = document.Signature?.SignedAtUtc,
-            SignatureImageDataUrl = document.Signature?.SignatureImageDataUrl
+            SignatureImageDataUrl = document.Signature?.SignatureImageDataUrl,
+            Timeline = document.Activities
+                .Where(a => !ExcludedFromPublicTimeline.Contains(a.Type))
+                .OrderBy(a => a.OccurredAtUtc)
+                .Select(a => new PublicDocumentActivityDto { Type = a.Type, Detail = a.Detail, OccurredAtUtc = a.OccurredAtUtc })
+                .ToList()
         };
 }

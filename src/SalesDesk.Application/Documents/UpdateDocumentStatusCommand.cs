@@ -36,10 +36,16 @@ public sealed class UpdateDocumentStatusCommandHandler(
         if (request.Status == DocumentStatus.Sent)
         {
             document.Dispatch(dateTime.UtcNow.UtcDateTime);
+            context.DocumentActivities.Add(document.Activities.Last());
         }
         else
         {
             document.ChangeStatus(request.Status);
+            // ChangeStatus itself stays a bare setter (it's also used to fast-forward
+            // seed/demo data with no timeline of its own) — this PATCH endpoint is the
+            // one real "the workspace manually changed this" business action, so the
+            // activity entry is recorded here rather than inside the domain method.
+            context.DocumentActivities.Add(document.RecordActivity(DocumentActivityType.StatusChanged, request.Status.ToString(), dateTime.UtcNow.UtcDateTime));
         }
 
         await context.SaveChangesAsync(cancellationToken);
@@ -48,6 +54,7 @@ public sealed class UpdateDocumentStatusCommandHandler(
             .Include(d => d.Customer)
             .Include(d => d.Template)
             .Include(d => d.LineItems)
+            .Include(d => d.Activities)
             .FirstAsync(d => d.Id == document.Id, cancellationToken);
 
         // TASK-034, Templates 1/2: only on a genuine Draft/RevisionRequested -> Sent

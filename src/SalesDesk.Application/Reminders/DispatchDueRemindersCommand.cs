@@ -152,6 +152,7 @@ public sealed class DispatchDueRemindersCommandHandler(
         // Saved immediately (not batched until the end of the run) so a mid-run
         // crash can't cause an already-sent reminder to be sent again on the next tick.
         context.DocumentReminderLogs.Add(new DocumentReminderLog(document.Id, type, sentAtUtc));
+        context.DocumentActivities.Add(new DocumentActivity(document.Id, DocumentActivityType.ReminderSent, type.ToString(), sentAtUtc));
         await context.SaveChangesAsync(cancellationToken);
     }
 }

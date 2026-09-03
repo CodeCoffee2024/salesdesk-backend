@@ -77,6 +77,18 @@ public class PublicDocumentNotificationTests
     }
 
     [Fact]
+    public async Task Viewing_a_document_twice_records_two_Viewed_entries_on_the_timeline()
+    {
+        var (fixture, _, document) = await SeedAsync();
+        var sender = new FakePushNotificationSender();
+
+        await MakeViewHandler(fixture, sender).Handle(new GetPublicDocumentByTokenQuery(document.PublicToken), CancellationToken.None);
+        var result = await MakeViewHandler(fixture, sender).Handle(new GetPublicDocumentByTokenQuery(document.PublicToken), CancellationToken.None);
+
+        result.Timeline.Where(a => a.Type == DocumentActivityType.Viewed).Should().HaveCount(2);
+    }
+
+    [Fact]
     public async Task Signing_sends_a_push_notification()
     {
         var (fixture, _, document) = await SeedAsync();
@@ -103,5 +115,20 @@ public class PublicDocumentNotificationTests
 
         result.Status.Should().Be(DocumentStatus.RevisionRequested);
         sender.SentNotifications.Should().ContainSingle(n => n.Body.Contains("Please change the color scheme"));
+        result.Timeline.Should().ContainSingle(a => a.Type == DocumentActivityType.RevisionRequested && a.Detail == "Please change the color scheme.");
+    }
+
+    [Fact]
+    public async Task Signing_records_a_Signed_entry_on_the_public_timeline()
+    {
+        var (fixture, _, document) = await SeedAsync();
+        var handler = new SignDocumentCommandHandler(
+            fixture.CreateContext(), DateTime, new WorkspacePushNotifier(fixture.CreateContext(), new FakePushNotificationSender()), new FakePublicLinkBuilder(), new FakeEmailSender());
+
+        var result = await handler.Handle(
+            new SignDocumentCommand(document.PublicToken, "Maya Chen", "maya@northstar.studio", true, SignatureType.Drawn, "data:image/png;base64,abc==", "203.0.113.5", "Mozilla/5.0"),
+            CancellationToken.None);
+
+        result.Timeline.Should().ContainSingle(a => a.Type == DocumentActivityType.Signed && a.Detail == "Maya Chen");
     }
 }

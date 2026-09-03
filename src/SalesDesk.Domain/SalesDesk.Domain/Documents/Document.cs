@@ -16,6 +16,7 @@ namespace SalesDesk.Domain.Documents;
 public sealed class Document : Entity
 {
     private readonly List<DocumentLineItem> _lineItems = [];
+    private readonly List<DocumentActivity> _activities = [];
 
     public Guid WorkspaceId { get; private set; }
 
@@ -51,6 +52,9 @@ public sealed class Document : Entity
     public string? ClientCountry { get; private set; }
 
     public IReadOnlyCollection<DocumentLineItem> LineItems => _lineItems.AsReadOnly();
+
+    /// <summary>The full "what happened and when" history — see DocumentActivity. Ordered as recorded; callers wanting chronological display should sort by OccurredAtUtc themselves.</summary>
+    public IReadOnlyCollection<DocumentActivity> Activities => _activities.AsReadOnly();
 
     public DocumentSignature? Signature { get; private set; }
 
@@ -227,6 +231,7 @@ public sealed class Document : Entity
         Status = DocumentStatus.Sent;
         RevisionFeedback = null;
         RevisionRequestedAtUtc = null;
+        RecordActivity(DocumentActivityType.Dispatched, null, dispatchedAtUtc);
     }
 
     /// <summary>
@@ -251,25 +256,30 @@ public sealed class Document : Entity
 
         Signature = signature;
         Status = DocumentStatus.Accepted;
+        RecordActivity(DocumentActivityType.Signed, signerName, signedAtUtc.UtcDateTime);
         return signature;
     }
 
     /// <summary>
-    /// Marks the document as opened by a client, the first time only (TASK-027) —
-    /// returns whether this call was the transition, so the caller (which fires a
-    /// push notification on that transition) doesn't notify on every repeat view.
-    /// Deliberately not gated by <see cref="EnsureNotLocked"/>: a signed document
-    /// can still be reopened and viewed, and that's not an edit.
+    /// Marks the document as opened by a client, and always records a Viewed
+    /// activity entry (TASK-027, extended for the activity timeline: unlike
+    /// FirstViewedAtUtc, every view is kept, not just the first) — the bool
+    /// return tells the caller (which fires a push notification/email on the
+    /// transition) whether this specific call was the first view, so repeat
+    /// views don't re-notify. Deliberately not gated by
+    /// <see cref="EnsureNotLocked"/>: a signed document can still be reopened
+    /// and viewed, and that's not an edit.
     /// </summary>
-    public bool RecordFirstView(DateTime viewedAtUtc)
+    public bool RecordView(DateTime viewedAtUtc)
     {
-        if (FirstViewedAtUtc is not null)
+        var isFirstView = FirstViewedAtUtc is null;
+        if (isFirstView)
         {
-            return false;
+            FirstViewedAtUtc = viewedAtUtc;
         }
 
-        FirstViewedAtUtc = viewedAtUtc;
-        return true;
+        RecordActivity(DocumentActivityType.Viewed, null, viewedAtUtc);
+        return isFirstView;
     }
 
     /// <summary>
@@ -285,6 +295,20 @@ public sealed class Document : Entity
         RevisionFeedback = Guard.AgainstNullOrWhiteSpace(feedback, nameof(feedback));
         RevisionRequestedAtUtc = requestedAtUtc;
         Status = DocumentStatus.RevisionRequested;
+        RecordActivity(DocumentActivityType.RevisionRequested, feedback, requestedAtUtc);
+    }
+
+    /// <summary>
+    /// Appends a timeline entry without any other side effect — used directly by
+    /// application handlers for events that don't already correspond to one of
+    /// the state-transition methods above (document creation, an edit that
+    /// doesn't dispatch, a manually-set status, an automated reminder email).
+    /// </summary>
+    public DocumentActivity RecordActivity(DocumentActivityType type, string? detail, DateTime occurredAtUtc)
+    {
+        var activity = new DocumentActivity(Id, type, detail, occurredAtUtc);
+        _activities.Add(activity);
+        return activity;
     }
 
     /// <summary>

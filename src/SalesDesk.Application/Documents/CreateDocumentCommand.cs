@@ -114,11 +114,14 @@ public sealed class CreateDocumentCommandHandler(
             document.AddLineItem(item.Description, item.Quantity, item.UnitPrice, item.ProductId);
         }
 
+        context.DocumentActivities.Add(document.RecordActivity(DocumentActivityType.Created, null, dateTime.UtcNow.UtcDateTime));
+
         // A brand-new document is always Draft (see the Document constructor), so
         // Dispatch's EnsureEditable check always passes here.
         if (request.Dispatch)
         {
             document.Dispatch(dateTime.UtcNow.UtcDateTime);
+            context.DocumentActivities.Add(document.Activities.Last());
         }
 
         template.RecordUsage();
@@ -132,6 +135,7 @@ public sealed class CreateDocumentCommandHandler(
             .Include(d => d.Customer)
             .Include(d => d.Template)
             .Include(d => d.LineItems)
+            .Include(d => d.Activities)
             .FirstAsync(d => d.Id == document.Id, cancellationToken);
 
         if (request.Dispatch)

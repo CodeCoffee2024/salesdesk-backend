@@ -36,6 +36,15 @@ public sealed class DocumentSignatureSummaryDto
     public string SignatureImageDataUrl { get; init; } = string.Empty;
 }
 
+public sealed class DocumentActivityDto
+{
+    public DocumentActivityType Type { get; init; }
+
+    public string? Detail { get; init; }
+
+    public DateTime OccurredAtUtc { get; init; }
+}
+
 public sealed class DocumentDto
 {
     public Guid Id { get; init; }
@@ -83,4 +92,7 @@ public sealed class DocumentDto
     public string? ClientCountry { get; init; }
 
     public List<DocumentLineItemDto> LineItems { get; init; } = [];
+
+    /// <summary>The document's full history, oldest first — see DocumentActivity. Empty for GetDocumentsQuery's list rows, which don't load it.</summary>
+    public List<DocumentActivityDto> Activities { get; init; } = [];
 }

@@ -55,6 +55,7 @@ public sealed class SignDocumentCommandHandler(
             .Include(d => d.Customer)
             .Include(d => d.LineItems)
             .Include(d => d.Signature)
+            .Include(d => d.Activities)
             .FirstOrDefaultAsync(d => d.PublicToken == request.Token, cancellationToken)
             ?? throw new NotFoundException(nameof(Document), request.Token);
 
@@ -74,6 +75,7 @@ public sealed class SignDocumentCommandHandler(
         // never inserted (0 rows affected, DbUpdateConcurrencyException). Same
         // failure mode as UpdateDocumentCommand's line-item replace; same fix.
         context.DocumentSignatures.Add(signature);
+        context.DocumentActivities.Add(document.Activities.Last());
 
         await context.SaveChangesAsync(cancellationToken);
 

@@ -32,6 +32,8 @@ public sealed class SalesDeskDbContext(DbContextOptions<SalesDeskDbContext> opti
 
     public DbSet<DocumentSignature> DocumentSignatures => Set<DocumentSignature>();
 
+    public DbSet<DocumentActivity> DocumentActivities => Set<DocumentActivity>();
+
     public DbSet<DocumentReminderLog> DocumentReminderLogs => Set<DocumentReminderLog>();
 
     public DbSet<ReminderSettings> ReminderSettingsEntries => Set<ReminderSettings>();

@@ -37,6 +37,8 @@ public interface IApplicationDbContext
 
     DbSet<DocumentSignature> DocumentSignatures { get; }
 
+    DbSet<DocumentActivity> DocumentActivities { get; }
+
     DbSet<DocumentReminderLog> DocumentReminderLogs { get; }
 
     DbSet<ReminderSettings> ReminderSettingsEntries { get; }

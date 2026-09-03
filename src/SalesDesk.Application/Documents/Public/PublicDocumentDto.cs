@@ -47,4 +47,16 @@ public sealed class PublicDocumentDto
 
     /// <summary>PNG data URL of the client's own e-signature — safe to hand back on this same public link, since it's the client viewing what they themselves signed.</summary>
     public string? SignatureImageDataUrl { get; init; }
+
+    /// <summary>The client-facing slice of the document's timeline, oldest first — see PublicDocumentMapper for exactly what's included/excluded.</summary>
+    public List<PublicDocumentActivityDto> Timeline { get; init; } = [];
+}
+
+public sealed class PublicDocumentActivityDto
+{
+    public DocumentActivityType Type { get; init; }
+
+    public string? Detail { get; init; }
+
+    public DateTime OccurredAtUtc { get; init; }
 }

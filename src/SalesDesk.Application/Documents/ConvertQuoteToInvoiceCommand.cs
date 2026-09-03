@@ -56,6 +56,8 @@ public sealed class ConvertQuoteToInvoiceCommandHandler(IApplicationDbContext co
             invoice.AddLineItem(item.Description, item.Quantity, item.UnitPrice, item.ProductId);
         }
 
+        context.DocumentActivities.Add(invoice.RecordActivity(DocumentActivityType.Created, $"Converted from quote {quote.DocumentNumber}", dateTime.UtcNow.UtcDateTime));
+
         context.Documents.Add(invoice);
         await context.SaveChangesAsync(cancellationToken);
 
@@ -63,6 +65,7 @@ public sealed class ConvertQuoteToInvoiceCommandHandler(IApplicationDbContext co
             .Include(d => d.Customer)
             .Include(d => d.Template)
             .Include(d => d.LineItems)
+            .Include(d => d.Activities)
             .FirstAsync(d => d.Id == invoice.Id, cancellationToken);
 
         return mapper.Map<DocumentDto>(created);

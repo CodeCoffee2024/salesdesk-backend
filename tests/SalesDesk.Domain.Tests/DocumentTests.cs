@@ -367,4 +367,62 @@ public class DocumentTests
         yield return [new Action<Document>(d => d.ChangeCurrency("EUR", "DE"))];
         yield return [new Action<Document>(d => d.ReplaceLineItems([new NewLineItem("X", 1m, 1m, null)]))];
     }
+
+    [Fact]
+    public void Dispatch_records_a_Dispatched_activity()
+    {
+        var document = CreateDocument();
+        document.AddLineItem("Research", 1m, 500m);
+        var dispatchedAt = new DateTime(2026, 8, 26, 10, 0, 0, DateTimeKind.Utc);
+
+        document.Dispatch(dispatchedAt);
+
+        document.Activities.Should().ContainSingle(a => a.Type == DocumentActivityType.Dispatched && a.OccurredAtUtc == dispatchedAt);
+    }
+
+    [Fact]
+    public void RecordView_always_appends_a_Viewed_activity_but_only_reports_the_first_as_new()
+    {
+        var document = CreateDocument();
+        var firstViewedAt = new DateTime(2026, 8, 26, 9, 0, 0, DateTimeKind.Utc);
+        var secondViewedAt = firstViewedAt.AddHours(2);
+
+        var isFirstView = document.RecordView(firstViewedAt);
+        var isSecondViewFirst = document.RecordView(secondViewedAt);
+
+        isFirstView.Should().BeTrue();
+        isSecondViewFirst.Should().BeFalse();
+        document.Activities.Where(a => a.Type == DocumentActivityType.Viewed).Should().HaveCount(2);
+        document.FirstViewedAtUtc.Should().Be(firstViewedAt);
+    }
+
+    [Fact]
+    public void RequestRevision_records_a_RevisionRequested_activity_carrying_the_feedback()
+    {
+        var document = CreateDocument();
+        document.ChangeStatus(DocumentStatus.Sent);
+        var requestedAt = new DateTime(2026, 8, 27, 8, 0, 0, DateTimeKind.Utc);
+
+        document.RequestRevision("Please use a different color scheme.", requestedAt);
+
+        document.Activities.Should().ContainSingle(a =>
+            a.Type == DocumentActivityType.RevisionRequested &&
+            a.Detail == "Please use a different color scheme." &&
+            a.OccurredAtUtc == requestedAt);
+    }
+
+    [Fact]
+    public void ApplySignature_records_a_Signed_activity_carrying_the_signer_name()
+    {
+        var document = CreateDocument();
+        document.AddLineItem("Research", 1m, 500m);
+        var signedAt = new DateTimeOffset(2026, 8, 28, 12, 0, 0, TimeSpan.Zero);
+
+        document.ApplySignature(
+            "Jane Client", "jane@example.com", SignatureType.Drawn, "data:image/png;base64,abc==",
+            "203.0.113.5", "Mozilla/5.0", signedAt);
+
+        document.Activities.Should().ContainSingle(a =>
+            a.Type == DocumentActivityType.Signed && a.Detail == "Jane Client" && a.OccurredAtUtc == signedAt.UtcDateTime);
+    }
 }

@@ -30,10 +30,12 @@ public sealed class RequestDocumentRevisionCommandHandler(
             .Include(d => d.Customer)
             .Include(d => d.LineItems)
             .Include(d => d.Signature)
+            .Include(d => d.Activities)
             .FirstOrDefaultAsync(d => d.PublicToken == request.Token, cancellationToken)
             ?? throw new NotFoundException(nameof(Document), request.Token);
 
         document.RequestRevision(request.Feedback, dateTime.UtcNow.UtcDateTime);
+        context.DocumentActivities.Add(document.Activities.Last());
         await context.SaveChangesAsync(cancellationToken);
 
         var workspace = await context.Workspaces.FirstAsync(w => w.Id == document.WorkspaceId, cancellationToken);

@@ -21,18 +21,23 @@ public sealed class GetPublicDocumentByTokenQueryHandler(
             .Include(d => d.Customer)
             .Include(d => d.LineItems)
             .Include(d => d.Signature)
+            .Include(d => d.Activities)
             .FirstOrDefaultAsync(d => d.PublicToken == request.Token, cancellationToken)
             ?? throw new NotFoundException(nameof(Document), request.Token);
 
         var workspace = await context.Workspaces
             .FirstAsync(w => w.Id == document.WorkspaceId, cancellationToken);
 
-        // TASK-027: notify once, the first time a client opens the link — not on
-        // every repeat view (a refresh, or the client reopening it later).
-        if (document.RecordFirstView(dateTime.UtcNow.UtcDateTime))
-        {
-            await context.SaveChangesAsync(cancellationToken);
+        // Every view is kept on the activity timeline now, not just the first —
+        // TASK-027's original "notify once" gate below still only fires on the
+        // actual first-view transition, so a refresh or a later reopen still
+        // doesn't re-notify the workspace.
+        var isFirstView = document.RecordView(dateTime.UtcNow.UtcDateTime);
+        context.DocumentActivities.Add(document.Activities.Last());
+        await context.SaveChangesAsync(cancellationToken);
 
+        if (isFirstView)
+        {
             var customerName = document.Customer?.Name ?? "A client";
             var previewUrl = linkBuilder.BuildDocumentPreviewUrl(document.Id);
 

@@ -25,6 +25,7 @@ public sealed class MappingProfile : Profile
 
         CreateMap<DocumentLineItem, DocumentLineItemDto>();
         CreateMap<DocumentSignature, DocumentSignatureSummaryDto>();
+        CreateMap<DocumentActivity, DocumentActivityDto>();
 
         // Customer/Template are required navigations on every persisted Document,
         // so handlers always load them (.Include) before mapping — see
@@ -32,6 +33,7 @@ public sealed class MappingProfile : Profile
         CreateMap<Document, DocumentDto>()
             .ForMember(dest => dest.CustomerName, opt => opt.MapFrom(src => src.Customer!.Name))
             .ForMember(dest => dest.CustomerCompany, opt => opt.MapFrom(src => src.Customer!.Company))
-            .ForMember(dest => dest.TemplateName, opt => opt.MapFrom(src => src.Template!.Name));
+            .ForMember(dest => dest.TemplateName, opt => opt.MapFrom(src => src.Template!.Name))
+            .ForMember(dest => dest.Activities, opt => opt.MapFrom(src => src.Activities.OrderBy(a => a.OccurredAtUtc)));
     }
 }

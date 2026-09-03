@@ -76,9 +76,17 @@ public sealed class UpdateDocumentCommandHandler(
         document.ReplaceLineItems(request.LineItems.Select(item =>
             new NewLineItem(item.Description, item.Quantity, item.UnitPrice, item.ProductId)));
 
+        // Timeline entry for the edit itself — separate from the Dispatched entry
+        // below, since a Draft can be saved without sending, and re-sending a
+        // revision is really two distinct, separately meaningful events.
+        context.DocumentActivities.Add(document.RecordActivity(DocumentActivityType.Edited, null, dateTime.UtcNow.UtcDateTime));
+
         if (request.Dispatch)
         {
             document.Dispatch(dateTime.UtcNow.UtcDateTime);
+            // Dispatch() records its own activity entry internally; grab the one
+            // it just appended (guaranteed to be the last, added after Edited's above).
+            context.DocumentActivities.Add(document.Activities.Last());
         }
 
         // DocumentLineItem.Id is a client-generated Guid, never left at its CLR
@@ -96,6 +104,7 @@ public sealed class UpdateDocumentCommandHandler(
             .Include(d => d.Customer)
             .Include(d => d.Template)
             .Include(d => d.LineItems)
+            .Include(d => d.Activities)
             .FirstAsync(d => d.Id == document.Id, cancellationToken);
 
         if (request.Dispatch)

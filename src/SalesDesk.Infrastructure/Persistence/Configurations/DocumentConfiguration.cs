@@ -86,6 +86,16 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Navigation(d => d.LineItems)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        // Activity timeline entries are owned by the document the same way line
+        // items are: deleting a document deletes its history with it.
+        builder.HasMany(d => d.Activities)
+            .WithOne(a => a.Document)
+            .HasForeignKey(a => a.DocumentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.Navigation(d => d.Activities)
+            .UsePropertyAccessMode(PropertyAccessMode.Field);
+
         builder.HasIndex(d => d.CustomerId);
         builder.HasIndex(d => d.Status);
         builder.HasIndex(d => d.Type);
