@@ -17,4 +17,13 @@ public interface IPublicLinkBuilder
 
     /// <summary>TASK-030: the link emailed on registration (and on "resend verification") — the frontend's /auth/verify-email page reads the token off the query string and calls the verify-email endpoint.</summary>
     string BuildVerifyEmailUrl(string rawToken);
+
+    /// <summary>
+    /// TASK-039: the one-click link in the GCash payment admin-notification email.
+    /// Unlike every other link here, this points directly at the API's own
+    /// SubscriptionApprovalController (App:ApiBaseUrl) rather than the frontend —
+    /// visiting it performs the approval itself (a GET, per the task's own spec),
+    /// there's no frontend page to route through first.
+    /// </summary>
+    string BuildApproveGCashSubscriptionUrl(string rawToken);
 }

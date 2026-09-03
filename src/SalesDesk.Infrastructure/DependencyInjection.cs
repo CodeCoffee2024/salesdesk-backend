@@ -39,13 +39,21 @@ public static class DependencyInjection
         // rationale, matching IEmailSender/IPushNotificationSender below).
         services.AddSingleton<ICurrencyConversionService, StaticRateCurrencyConversionService>();
 
+        // TASK-039: platform GCash account details + admin notification address —
+        // reads Billing:/GCash: config directly, all optional (an unset value just
+        // means that piece of the flow degrades gracefully, same as the payment
+        // gateway and email sender below).
+        services.AddSingleton<IBillingSettings, BillingSettings>();
+
         // Automated reminders (TASK-025). IPublicLinkBuilder needs the deployed
         // frontend's own base URL to build a `/view/{token}` link from the backend;
         // App:FrontendBaseUrl is intentionally allowed to be empty (falls back to a
         // relative link) rather than throwing at startup like Jwt:Secret does, since
         // the reminder engine is opt-in per workspace and shouldn't block boot in an
         // environment that hasn't set it yet.
-        services.AddSingleton<IPublicLinkBuilder>(new PublicLinkBuilder(configuration["App:FrontendBaseUrl"] ?? string.Empty));
+        services.AddSingleton<IPublicLinkBuilder>(new PublicLinkBuilder(
+            configuration["App:FrontendBaseUrl"] ?? string.Empty,
+            configuration["App:ApiBaseUrl"] ?? string.Empty));
         services.AddHostedService<ReminderDispatchHostedService>();
 
         // Email delivery only goes live once Resend:ApiKey is configured —

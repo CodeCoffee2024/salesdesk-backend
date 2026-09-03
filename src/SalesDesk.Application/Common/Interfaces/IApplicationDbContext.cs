@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using SalesDesk.Domain.Audit;
+using SalesDesk.Domain.Billing;
 using SalesDesk.Domain.Customers;
 using SalesDesk.Domain.Documents;
 using SalesDesk.Domain.Products;
@@ -43,6 +44,8 @@ public interface IApplicationDbContext
     DbSet<AuditLog> AuditLogs { get; }
 
     DbSet<PromoCounter> PromoCounters { get; }
+
+    DbSet<GCashPaymentSubmission> GCashPaymentSubmissions { get; }
 
     /// <summary>
     /// TASK-031: atomically claims the next "Early 100 Free Year" promo slot and

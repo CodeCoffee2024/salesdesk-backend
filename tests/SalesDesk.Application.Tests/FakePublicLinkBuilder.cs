@@ -11,4 +11,6 @@ public sealed class FakePublicLinkBuilder : IPublicLinkBuilder
     public string BuildDocumentPreviewUrl(Guid documentId) => $"https://app.example.test/documents/{documentId:D}/preview";
 
     public string BuildVerifyEmailUrl(string rawToken) => $"https://app.example.test/auth/verify-email?token={rawToken}";
+
+    public string BuildApproveGCashSubscriptionUrl(string rawToken) => $"https://api.example.test/api/admin/subscriptions/approve?token={rawToken}";
 }

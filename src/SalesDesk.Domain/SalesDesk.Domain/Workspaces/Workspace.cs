@@ -113,4 +113,20 @@ public sealed class Workspace : Entity
         SubscriptionEndDate = registeredAtUtc.AddDays(365);
         IsEarlyBirdPromo = true;
     }
+
+    /// <summary>
+    /// TASK-039: activates a paid tier once an admin approves a manual GCash
+    /// payment submission — the one real (non-stubbed) upgrade path today. Doesn't
+    /// touch IsEarlyBirdPromo: this is a standard paid upgrade, not the promo.
+    /// </summary>
+    public void ActivatePaidSubscription(SubscriptionTier tier, DateTimeOffset expiresAtUtc)
+    {
+        if (tier == SubscriptionTier.Free)
+        {
+            throw new ArgumentOutOfRangeException(nameof(tier), tier, "Cannot activate a paid subscription for the Free tier.");
+        }
+
+        SubscriptionTier = tier;
+        SubscriptionEndDate = expiresAtUtc;
+    }
 }

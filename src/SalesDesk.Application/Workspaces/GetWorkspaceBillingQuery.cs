@@ -22,13 +22,32 @@ public sealed class GetWorkspaceBillingQueryHandler(IApplicationDbContext contex
         var documentsIssuedThisMonth = await context.Documents
             .CountAsync(d => d.WorkspaceId == workspaceId && d.IssueDate >= monthStart, cancellationToken);
 
+        // Most recent first: a resubmission after an issue should show as the
+        // current pending claim, not an older one. Ordered client-side rather
+        // than via OrderBy in the query itself — realistically 0-1 unapproved
+        // rows per workspace, and Sqlite (the test fixture's provider) can't
+        // translate ORDER BY on a DateTimeOffset column the way Postgres can.
+        var pendingSubmission = (await context.GCashPaymentSubmissions
+            .Where(s => s.WorkspaceId == workspaceId && !s.IsApproved)
+            .ToListAsync(cancellationToken))
+            .OrderByDescending(s => s.SubmittedAtUtc)
+            .FirstOrDefault();
+
         return new WorkspaceBillingDto
         {
             SubscriptionTier = workspace.SubscriptionTier.ToString(),
             SubscriptionEndDate = workspace.SubscriptionEndDate,
             IsEarlyBirdPromo = workspace.IsEarlyBirdPromo,
             MonthlyDocumentLimit = PricingCatalog.MonthlyDocumentLimit(workspace.SubscriptionTier),
-            DocumentsIssuedThisMonth = documentsIssuedThisMonth
+            DocumentsIssuedThisMonth = documentsIssuedThisMonth,
+            PendingGCashSubmission = pendingSubmission is null
+                ? null
+                : new PendingGCashSubmissionDto
+                {
+                    GCashReferenceNumber = pendingSubmission.GCashReferenceNumber,
+                    Tier = pendingSubmission.Tier.ToString(),
+                    SubmittedAtUtc = pendingSubmission.SubmittedAtUtc
+                }
         };
     }
 }

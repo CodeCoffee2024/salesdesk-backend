@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using SalesDesk.Application.Common.Interfaces;
 using SalesDesk.Domain.Audit;
+using SalesDesk.Domain.Billing;
 using SalesDesk.Domain.Customers;
 using SalesDesk.Domain.Documents;
 using SalesDesk.Domain.Products;
@@ -38,6 +39,8 @@ public sealed class SalesDeskDbContext(DbContextOptions<SalesDeskDbContext> opti
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     public DbSet<PromoCounter> PromoCounters => Set<PromoCounter>();
+
+    public DbSet<GCashPaymentSubmission> GCashPaymentSubmissions => Set<GCashPaymentSubmission>();
 
     /// <inheritdoc cref="IApplicationDbContext.TryReserveEarlyBirdPromoSlotAsync"/>
     public async Task<bool> TryReserveEarlyBirdPromoSlotAsync(CancellationToken cancellationToken)

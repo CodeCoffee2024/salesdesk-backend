@@ -163,4 +163,27 @@ public class WorkspaceTests
         workspace.SubscriptionEndDate.Should().Be(registeredAt.AddDays(365));
         workspace.IsEarlyBirdPromo.Should().BeTrue();
     }
+
+    [Fact]
+    public void ActivatePaidSubscription_sets_the_tier_and_expiration_without_touching_IsEarlyBirdPromo()
+    {
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+        var expiresAt = new DateTimeOffset(2026, 10, 2, 0, 0, 0, TimeSpan.Zero);
+
+        workspace.ActivatePaidSubscription(SubscriptionTier.Studio, expiresAt);
+
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Studio);
+        workspace.SubscriptionEndDate.Should().Be(expiresAt);
+        workspace.IsEarlyBirdPromo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void ActivatePaidSubscription_rejects_the_Free_tier()
+    {
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+
+        var act = () => workspace.ActivatePaidSubscription(SubscriptionTier.Free, DateTimeOffset.UtcNow.AddDays(30));
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
 }

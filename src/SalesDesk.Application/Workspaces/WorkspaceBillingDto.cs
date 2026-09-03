@@ -16,4 +16,16 @@ public sealed class WorkspaceBillingDto
 
     /// <summary>TASK-038: documents issued so far this calendar month, for the usage bar next to MonthlyDocumentLimit on /settings/billing.</summary>
     public int DocumentsIssuedThisMonth { get; init; }
+
+    /// <summary>TASK-039: set while a GCash payment claim is awaiting admin verification — drives the "GCash Payment Received..." banner. Null once approved (or if nothing's ever been submitted).</summary>
+    public PendingGCashSubmissionDto? PendingGCashSubmission { get; init; }
+}
+
+public sealed class PendingGCashSubmissionDto
+{
+    public string GCashReferenceNumber { get; init; } = string.Empty;
+
+    public string Tier { get; init; } = string.Empty;
+
+    public DateTimeOffset SubmittedAtUtc { get; init; }
 }
