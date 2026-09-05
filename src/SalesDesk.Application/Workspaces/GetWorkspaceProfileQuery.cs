@@ -24,7 +24,8 @@ public sealed class GetWorkspaceProfileQueryHandler(IApplicationDbContext contex
             Address = workspace.Address,
             LogoUrl = workspace.LogoUrl,
             Country = workspace.Country,
-            DefaultCurrency = workspace.DefaultCurrency
+            DefaultCurrency = workspace.DefaultCurrency,
+            TimeZoneId = workspace.TimeZoneId
         };
     }
 }

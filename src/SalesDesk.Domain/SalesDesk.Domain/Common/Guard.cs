@@ -67,4 +67,16 @@ internal static class Guard
     /// <summary>Same as <see cref="AgainstInvalidIsoCode"/> but for an optional code — null/whitespace passes through as null instead of throwing.</summary>
     public static string? AgainstInvalidIsoCodeOrNull(string? value, int length, string paramName) =>
         string.IsNullOrWhiteSpace(value) ? null : AgainstInvalidIsoCode(value, length, paramName);
+
+    /// <summary>Validates an IANA time zone id (e.g. "Asia/Manila") against the runtime's own time zone database rather than a hardcoded list, so any zone the OS/ICU actually knows is accepted.</summary>
+    public static string AgainstInvalidTimeZone(string? value, string paramName)
+    {
+        var normalized = AgainstNullOrWhiteSpace(value, paramName).Trim();
+        if (!TimeZoneInfo.TryFindSystemTimeZoneById(normalized, out _))
+        {
+            throw new ArgumentException($"'{normalized}' is not a recognized time zone id.", paramName);
+        }
+
+        return normalized;
+    }
 }

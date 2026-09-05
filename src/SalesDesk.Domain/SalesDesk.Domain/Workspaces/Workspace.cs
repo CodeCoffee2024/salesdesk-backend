@@ -25,6 +25,9 @@ public sealed class Workspace : Entity
     /// <summary>ISO 4217 code (e.g. "USD", "EUR", "PHP") documents default to unless overridden per-document, and the currency dashboard totals are normalized into (TASK-029).</summary>
     public string DefaultCurrency { get; private set; }
 
+    /// <summary>IANA time zone id (e.g. "Asia/Manila", "America/Los_Angeles") this workspace operates in. Every outgoing document/reminder email localizes its activity-timeline timestamps into this zone instead of raw UTC, so a client reads times the way the business itself would. Defaults to "UTC" for a workspace that hasn't set one.</summary>
+    public string TimeZoneId { get; private set; }
+
     public bool IsActive { get; private set; }
 
     /// <summary>Maximum documents this workspace may issue. Null means unlimited.</summary>
@@ -47,6 +50,7 @@ public sealed class Workspace : Entity
         Email = string.Empty;
         Country = "US";
         DefaultCurrency = "USD";
+        TimeZoneId = "UTC";
     }
 
     public Workspace(
@@ -57,7 +61,8 @@ public sealed class Workspace : Entity
         string? logoUrl = null,
         int? documentQuota = 100,
         string country = "US",
-        string defaultCurrency = "USD")
+        string defaultCurrency = "USD",
+        string timeZoneId = "UTC")
     {
         Name = Guard.AgainstNullOrWhiteSpace(name, nameof(name));
         Email = Guard.AgainstNullOrWhiteSpace(email, nameof(email));
@@ -66,13 +71,14 @@ public sealed class Workspace : Entity
         LogoUrl = logoUrl;
         Country = Guard.AgainstInvalidIsoCode(country, 2, nameof(country));
         DefaultCurrency = Guard.AgainstInvalidIsoCode(defaultCurrency, 3, nameof(defaultCurrency));
+        TimeZoneId = Guard.AgainstInvalidTimeZone(timeZoneId, nameof(timeZoneId));
         IsActive = true;
         DocumentQuota = documentQuota;
         SubscriptionTier = SubscriptionTier.Free;
         CreatedAt = DateTimeOffset.UtcNow;
     }
 
-    public void UpdateProfile(string name, string email, string? tagline, string? address, string? logoUrl, string country, string defaultCurrency)
+    public void UpdateProfile(string name, string email, string? tagline, string? address, string? logoUrl, string country, string defaultCurrency, string timeZoneId)
     {
         Name = Guard.AgainstNullOrWhiteSpace(name, nameof(name));
         Email = Guard.AgainstNullOrWhiteSpace(email, nameof(email));
@@ -81,6 +87,7 @@ public sealed class Workspace : Entity
         LogoUrl = logoUrl;
         Country = Guard.AgainstInvalidIsoCode(country, 2, nameof(country));
         DefaultCurrency = Guard.AgainstInvalidIsoCode(defaultCurrency, 3, nameof(defaultCurrency));
+        TimeZoneId = Guard.AgainstInvalidTimeZone(timeZoneId, nameof(timeZoneId));
     }
 
     /// <summary>Blocks every user of this workspace from signing in — see LoginCommandHandler.</summary>

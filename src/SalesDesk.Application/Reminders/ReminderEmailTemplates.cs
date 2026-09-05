@@ -19,7 +19,7 @@ internal static class ReminderEmailTemplates
                 <p>Hi {customerName},</p>
                 <p>Just checking in on quote <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}). Let us know if you have any questions.</p>
                 {EmailBranding.CtaButton("View quote", documentUrl)}
-                {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true)}
+                {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true, workspace.TimeZoneId)}
                 """),
 
             ReminderType.InvoiceDueSoon => (
@@ -28,7 +28,7 @@ internal static class ReminderEmailTemplates
                 <p>Hi {customerName},</p>
                 <p>A friendly reminder that invoice <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}) is due on {document.DueDate:MMM d, yyyy}.</p>
                 {EmailBranding.CtaButton("View invoice", documentUrl)}
-                {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true)}
+                {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true, workspace.TimeZoneId)}
                 """),
 
             ReminderType.InvoiceOverdueFirstNotice => (
@@ -37,7 +37,7 @@ internal static class ReminderEmailTemplates
                 <p>Hi {customerName},</p>
                 <p>Invoice <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}) was due on {document.DueDate:MMM d, yyyy} and is now overdue.</p>
                 {EmailBranding.CtaButton("View invoice", documentUrl)}
-                {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true)}
+                {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true, workspace.TimeZoneId)}
                 """),
 
             ReminderType.InvoiceOverdueFinalNotice => (
@@ -46,7 +46,7 @@ internal static class ReminderEmailTemplates
                 <p>Hi {customerName},</p>
                 <p>This is a final notice: invoice <strong>{document.DocumentNumber}</strong> ({CurrencyFormatter.Format(document.Total, document.Currency)}) was due on {document.DueDate:MMM d, yyyy} and remains unpaid.</p>
                 {EmailBranding.CtaButton("View invoice", documentUrl)}
-                {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true)}
+                {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true, workspace.TimeZoneId)}
                 """),
 
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, "Unknown reminder type.")

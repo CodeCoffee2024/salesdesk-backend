@@ -17,4 +17,7 @@ public sealed class WorkspaceProfileDto
 
     /// <summary>ISO 4217 default currency new documents are priced in unless overridden (TASK-029).</summary>
     public string DefaultCurrency { get; init; } = "USD";
+
+    /// <summary>IANA time zone id document/reminder email timestamps are localized into instead of raw UTC.</summary>
+    public string TimeZoneId { get; init; } = "UTC";
 }

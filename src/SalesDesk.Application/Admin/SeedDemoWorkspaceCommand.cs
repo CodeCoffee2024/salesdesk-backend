@@ -70,7 +70,7 @@ public sealed class SeedDemoWorkspaceCommandHandler(IApplicationDbContext contex
 
             workspace.UpdateProfile(
                 DemoWorkspaceData.Name, DemoWorkspaceData.Email, DemoWorkspaceData.Tagline, DemoWorkspaceData.Address,
-                logoUrl: null, country: "US", defaultCurrency: "USD");
+                logoUrl: null, country: "US", defaultCurrency: "USD", timeZoneId: "America/New_York");
         }
         else
         {

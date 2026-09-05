@@ -24,12 +24,22 @@ internal static class DocumentNotificationEmailTemplates
             ? $"<p>This quote is valid until <strong>{document.DueDate:MMM d, yyyy}</strong>.</p>"
             : $"<p>Payment is due by <strong>{document.DueDate:MMM d, yyyy}</strong>.</p>";
 
+        // The template's authored body is the whole point of Template.ContentHtml
+        // (see its doc comment) — without this it was stored on save and never
+        // read anywhere, so a workspace's custom wording never actually reached
+        // the client. Merge tags are resolved against this real document, not
+        // the editor's mock preview values.
+        var templateBody = string.IsNullOrWhiteSpace(document.Template?.ContentHtml)
+            ? string.Empty
+            : MergeTagResolver.Resolve(document.Template!.ContentHtml!, document);
+
         var body = $"""
             <p>Hi {customerName},</p>
             <p>{workspace.Name} sent you {(isQuote ? "a quote" : "an invoice")}, <strong>{document.DocumentNumber}</strong>, totaling <strong>{CurrencyFormatter.Format(document.Total, document.Currency)}</strong>.</p>
             {dateLine}
+            {templateBody}
             {EmailBranding.CtaButton(isQuote ? "View quote" : "View and pay invoice", documentUrl)}
-            {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true)}
+            {DocumentActivityEmailFormatter.BuildTimelineHtml(document.Activities, forClient: true, workspace.TimeZoneId)}
             """;
 
         return (subject, EmailBranding.Workspace(workspace.Name, workspace.LogoUrl, workspace.Tagline, workspace.Address, workspace.Email, body));

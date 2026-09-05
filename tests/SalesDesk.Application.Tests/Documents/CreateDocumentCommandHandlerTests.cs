@@ -305,6 +305,65 @@ public class CreateDocumentCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_dispatch_email_localizes_the_timeline_into_the_workspaces_time_zone()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var workspace = new Workspace("Northline", "hello@northline.studio", timeZoneId: "America/Los_Angeles");
+        var scopedCurrentUser = new FakeCurrentUserService(workspace.Id);
+        var customer = new Customer(workspace.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+        var template = new Template(workspace.Id, "Studio Standard", isDefault: true);
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var emailSender = new FakeEmailSender();
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser, emailSender, new FakePublicLinkBuilder());
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)],
+            Dispatch: true);
+
+        await handler.Handle(command, CancellationToken.None);
+
+        var body = emailSender.SentMessages.Single().HtmlBody;
+        // Today is midnight UTC on Aug 25 — in America/Los_Angeles (UTC-7 in
+        // August) that's 5:00 PM the day before, so this also proves real zone
+        // conversion (including the date rolling back), not just a label swap.
+        body.Should().Contain("Aug 24, 5:00 PM PDT");
+        body.Should().NotContain("UTC");
+    }
+
+    [Fact]
+    public async Task Handle_dispatch_email_includes_the_templates_body_with_merge_tags_resolved()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+        var scopedCurrentUser = new FakeCurrentUserService(workspace.Id);
+        var customer = new Customer(workspace.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+        var template = new Template(
+            workspace.Id, "Studio Standard", isDefault: true,
+            contentHtml: "<p>Thanks for working with us, {{Customer.Name}} — {{Document.Number}} is ready.</p>");
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var emailSender = new FakeEmailSender();
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser, emailSender, new FakePublicLinkBuilder());
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)],
+            Dispatch: true);
+
+        var created = await handler.Handle(command, CancellationToken.None);
+
+        var body = emailSender.SentMessages.Single().HtmlBody;
+        body.Should().Contain($"Thanks for working with us, Maya Chen — {created.DocumentNumber} is ready.");
+        body.Should().NotContain("{{");
+    }
+
+    [Fact]
     public async Task Handle_rejects_a_line_item_with_zero_quantity()
     {
         using var fixture = new SqliteApplicationDbContextFixture();

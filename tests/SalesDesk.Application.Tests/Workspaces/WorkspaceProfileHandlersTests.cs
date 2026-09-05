@@ -23,6 +23,7 @@ public class WorkspaceProfileHandlersTests
         result.LogoUrl.Should().BeNull();
         result.Country.Should().Be("US");
         result.DefaultCurrency.Should().Be("USD");
+        result.TimeZoneId.Should().Be("UTC");
     }
 
     [Fact]
@@ -35,26 +36,28 @@ public class WorkspaceProfileHandlersTests
 
         var handler = new UpdateWorkspaceProfileCommandHandler(fixture.CreateContext(), new FakeCurrentUserService(workspace.Id));
         var result = await handler.Handle(
-            new UpdateWorkspaceProfileCommand("Northline Studio", "hello@northline.studio", "Now with a tagline", "1 Main St", "https://cdn.example.com/logo.png", "DE", "EUR"),
+            new UpdateWorkspaceProfileCommand("Northline Studio", "hello@northline.studio", "Now with a tagline", "1 Main St", "https://cdn.example.com/logo.png", "DE", "EUR", "Europe/Berlin"),
             CancellationToken.None);
 
         result.Name.Should().Be("Northline Studio");
         result.LogoUrl.Should().Be("https://cdn.example.com/logo.png");
         result.Country.Should().Be("DE");
         result.DefaultCurrency.Should().Be("EUR");
+        result.TimeZoneId.Should().Be("Europe/Berlin");
 
         var persisted = fixture.CreateContext().Workspaces.Single(w => w.Id == workspace.Id);
         persisted.Name.Should().Be("Northline Studio");
         persisted.LogoUrl.Should().Be("https://cdn.example.com/logo.png");
         persisted.Country.Should().Be("DE");
         persisted.DefaultCurrency.Should().Be("EUR");
+        persisted.TimeZoneId.Should().Be("Europe/Berlin");
     }
 
     [Fact]
     public void Validator_rejects_a_non_http_logo_url()
     {
         var validator = new UpdateWorkspaceProfileCommandValidator();
-        var command = new UpdateWorkspaceProfileCommand("Northline", "hello@northline.studio", null, null, "not-a-url", "US", "USD");
+        var command = new UpdateWorkspaceProfileCommand("Northline", "hello@northline.studio", null, null, "not-a-url", "US", "USD", "UTC");
 
         var act = () => validator.ValidateAndThrow(command);
 
@@ -67,7 +70,18 @@ public class WorkspaceProfileHandlersTests
     public void Validator_rejects_malformed_country_or_currency_codes(string country, string currency)
     {
         var validator = new UpdateWorkspaceProfileCommandValidator();
-        var command = new UpdateWorkspaceProfileCommand("Northline", "hello@northline.studio", null, null, null, country, currency);
+        var command = new UpdateWorkspaceProfileCommand("Northline", "hello@northline.studio", null, null, null, country, currency, "UTC");
+
+        var act = () => validator.ValidateAndThrow(command);
+
+        act.Should().Throw<ValidationException>();
+    }
+
+    [Fact]
+    public void Validator_rejects_an_unrecognized_time_zone_id()
+    {
+        var validator = new UpdateWorkspaceProfileCommandValidator();
+        var command = new UpdateWorkspaceProfileCommand("Northline", "hello@northline.studio", null, null, null, "US", "USD", "Not/A_Zone");
 
         var act = () => validator.ValidateAndThrow(command);
 

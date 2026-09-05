@@ -35,6 +35,11 @@ public sealed class WorkspaceConfiguration : IEntityTypeConfiguration<Workspace>
             .HasMaxLength(3)
             .IsRequired();
 
+        builder.Property(w => w.TimeZoneId)
+            .HasMaxLength(100)
+            .HasDefaultValue("UTC")
+            .IsRequired();
+
         builder.Property(w => w.IsActive)
             .IsRequired();
 

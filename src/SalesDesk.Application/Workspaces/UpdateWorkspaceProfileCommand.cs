@@ -14,7 +14,8 @@ public sealed record UpdateWorkspaceProfileCommand(
     string? Address,
     string? LogoUrl,
     string Country,
-    string DefaultCurrency) : IRequest<WorkspaceProfileDto>;
+    string DefaultCurrency,
+    string TimeZoneId) : IRequest<WorkspaceProfileDto>;
 
 public sealed class UpdateWorkspaceProfileCommandValidator : AbstractValidator<UpdateWorkspaceProfileCommand>
 {
@@ -29,10 +30,17 @@ public sealed class UpdateWorkspaceProfileCommandValidator : AbstractValidator<U
         // domain entity itself is the source of truth for "well-formed code".
         RuleFor(c => c.Country).NotEmpty().Matches("^[A-Za-z]{2}$").WithMessage("Country must be a 2-letter ISO 3166-1 alpha-2 code.");
         RuleFor(c => c.DefaultCurrency).NotEmpty().Matches("^[A-Za-z]{3}$").WithMessage("Default currency must be a 3-letter ISO 4217 code.");
+
+        // Same guardrail as Country/DefaultCurrency: validated against the
+        // runtime's own time zone database (see Guard.AgainstInvalidTimeZone),
+        // never a hardcoded allow-list.
+        RuleFor(c => c.TimeZoneId).NotEmpty().Must(BeAKnownTimeZone).WithMessage("Time zone must be a recognized IANA time zone id.");
     }
 
     private static bool BeAValidUrl(string? url) =>
         Uri.TryCreate(url, UriKind.Absolute, out var parsed) && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps);
+
+    private static bool BeAKnownTimeZone(string timeZoneId) => TimeZoneInfo.TryFindSystemTimeZoneById(timeZoneId, out _);
 }
 
 public sealed class UpdateWorkspaceProfileCommandHandler(IApplicationDbContext context, ICurrentUserService currentUser)
@@ -43,7 +51,7 @@ public sealed class UpdateWorkspaceProfileCommandHandler(IApplicationDbContext c
         var workspaceId = currentUser.RequireWorkspaceId();
         var workspace = await context.Workspaces.SingleAsync(w => w.Id == workspaceId, cancellationToken);
 
-        workspace.UpdateProfile(request.Name, request.Email, request.Tagline, request.Address, request.LogoUrl, request.Country, request.DefaultCurrency);
+        workspace.UpdateProfile(request.Name, request.Email, request.Tagline, request.Address, request.LogoUrl, request.Country, request.DefaultCurrency, request.TimeZoneId);
         await context.SaveChangesAsync(cancellationToken);
 
         return new WorkspaceProfileDto
@@ -54,7 +62,8 @@ public sealed class UpdateWorkspaceProfileCommandHandler(IApplicationDbContext c
             Address = workspace.Address,
             LogoUrl = workspace.LogoUrl,
             Country = workspace.Country,
-            DefaultCurrency = workspace.DefaultCurrency
+            DefaultCurrency = workspace.DefaultCurrency,
+            TimeZoneId = workspace.TimeZoneId
         };
     }
 }

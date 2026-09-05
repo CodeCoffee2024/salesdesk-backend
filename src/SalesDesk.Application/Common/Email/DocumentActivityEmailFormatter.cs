@@ -27,9 +27,14 @@ internal static class DocumentActivityEmailFormatter
     /// <summary>
     /// Builds the "Activity so far" HTML block, or an empty string if there's
     /// nothing to show yet — callers can splice the result straight into an
-    /// email body without an extra null/empty check.
+    /// email body without an extra null/empty check. Timestamps are localized
+    /// into <paramref name="timeZoneId"/> (the sending workspace's own time zone,
+    /// see Workspace.TimeZoneId) rather than shown as raw UTC — an email can't
+    /// run JavaScript to adapt to each reader's own clock the way the web app's
+    /// timeline does, so the workspace's own time zone is the next best fixed
+    /// choice, labeled explicitly rather than left ambiguous.
     /// </summary>
-    public static string BuildTimelineHtml(IEnumerable<DocumentActivity> activities, bool forClient)
+    public static string BuildTimelineHtml(IEnumerable<DocumentActivity> activities, bool forClient, string timeZoneId)
     {
         var ordered = activities
             .Where(a => !forClient || !ExcludedForClient.Contains(a.Type))
@@ -41,15 +46,19 @@ internal static class DocumentActivityEmailFormatter
             return string.Empty;
         }
 
+        var timeZone = TimeZoneInfo.TryFindSystemTimeZoneById(timeZoneId, out var found) ? found : TimeZoneInfo.Utc;
+
         var rows = new StringBuilder();
         foreach (var activity in ordered)
         {
             var label = LabelFor(activity.Type, forClient);
             var detail = DetailFor(activity, forClient);
             var detailHtml = detail is null ? "" : $" &mdash; {System.Net.WebUtility.HtmlEncode(detail)}";
+            var localTime = TimeZoneInfo.ConvertTimeFromUtc(activity.OccurredAtUtc, timeZone);
+            var zoneLabel = ZoneLabel(timeZone, localTime);
 
             rows.Append($"""
-                <li style="margin-bottom:6px;"><strong>{activity.OccurredAtUtc:MMM d, h:mm tt} UTC</strong> &mdash; {label}{detailHtml}</li>
+                <li style="margin-bottom:6px;"><strong>{localTime:MMM d, h:mm tt} {zoneLabel}</strong> &mdash; {label}{detailHtml}</li>
                 """);
         }
 
@@ -59,6 +68,39 @@ internal static class DocumentActivityEmailFormatter
               {rows}
             </ul>
             """;
+    }
+
+    /// <summary>
+    /// A short, human label for the zone a timestamp was just converted into —
+    /// e.g. "PST"/"PDT" for America/Los_Angeles, "UTC" for UTC itself. Derived
+    /// from TimeZoneInfo's own (Standard/Daylight)Name rather than a hardcoded
+    /// abbreviation table, by taking the initials of that name's words (the
+    /// convention essentially every such name follows: "Pacific Standard Time"
+    /// -&gt; PST). Falls back to the numeric UTC offset for the rare zone whose
+    /// name doesn't reduce to a recognizable abbreviation this way.
+    /// </summary>
+    private static string ZoneLabel(TimeZoneInfo timeZone, DateTime localTime)
+    {
+        if (timeZone.Id == "UTC")
+        {
+            return "UTC";
+        }
+
+        var name = timeZone.IsDaylightSavingTime(localTime) ? timeZone.DaylightName : timeZone.StandardName;
+        var initials = new string(name
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries)
+            .Where(word => char.IsUpper(word[0]))
+            .Select(word => word[0])
+            .ToArray());
+
+        if (initials.Length is >= 2 and <= 5)
+        {
+            return initials;
+        }
+
+        var offset = timeZone.GetUtcOffset(localTime);
+        var sign = offset < TimeSpan.Zero ? "-" : "+";
+        return $"UTC{sign}{Math.Abs(offset.Hours):D2}:{Math.Abs(offset.Minutes):D2}";
     }
 
     private static string LabelFor(DocumentActivityType type, bool forClient) => type switch

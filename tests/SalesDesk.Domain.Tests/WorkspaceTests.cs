@@ -48,7 +48,7 @@ public class WorkspaceTests
         var workspace = new Workspace("Northline", "hello@northline.studio");
         var originalId = workspace.Id;
 
-        workspace.UpdateProfile("Northline Studio", "contact@northline.studio", "Brand & web", "New address", "https://cdn.example.com/logo2.png", "DE", "EUR");
+        workspace.UpdateProfile("Northline Studio", "contact@northline.studio", "Brand & web", "New address", "https://cdn.example.com/logo2.png", "DE", "EUR", "Europe/Berlin");
 
         workspace.Id.Should().Be(originalId);
         workspace.Name.Should().Be("Northline Studio");
@@ -58,6 +58,7 @@ public class WorkspaceTests
         workspace.LogoUrl.Should().Be("https://cdn.example.com/logo2.png");
         workspace.Country.Should().Be("DE");
         workspace.DefaultCurrency.Should().Be("EUR");
+        workspace.TimeZoneId.Should().Be("Europe/Berlin");
     }
 
     [Fact]
@@ -67,6 +68,15 @@ public class WorkspaceTests
 
         workspace.Country.Should().Be("US");
         workspace.DefaultCurrency.Should().Be("USD");
+        workspace.TimeZoneId.Should().Be("UTC");
+    }
+
+    [Fact]
+    public void Constructor_rejects_an_unrecognized_time_zone_id()
+    {
+        var act = () => new Workspace("Northline", "hello@northline.studio", timeZoneId: "Not/A_Zone");
+
+        act.Should().Throw<ArgumentException>();
     }
 
     [Fact]
