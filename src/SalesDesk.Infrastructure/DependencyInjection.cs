@@ -56,6 +56,10 @@ public static class DependencyInjection
             configuration["App:ApiBaseUrl"] ?? string.Empty));
         services.AddHostedService<ReminderDispatchHostedService>();
 
+        // Recurring retainer schedules (VERSION-2 roadmap item 3) — reuses the same
+        // IPublicLinkBuilder/IEmailSender configured above.
+        services.AddHostedService<RecurringDocumentHostedService>();
+
         // Email delivery only goes live once Resend:ApiKey is configured —
         // otherwise the reminder/forgot-password paths fall back to a log-only
         // sender rather than failing every send in an environment that hasn't

@@ -36,6 +36,10 @@ public sealed class SalesDeskDbContext(DbContextOptions<SalesDeskDbContext> opti
 
     public DbSet<DocumentReminderLog> DocumentReminderLogs => Set<DocumentReminderLog>();
 
+    public DbSet<RecurringSchedule> RecurringSchedules => Set<RecurringSchedule>();
+
+    public DbSet<RecurringScheduleLineItem> RecurringScheduleLineItems => Set<RecurringScheduleLineItem>();
+
     public DbSet<ReminderSettings> ReminderSettingsEntries => Set<ReminderSettings>();
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();

@@ -41,6 +41,10 @@ public interface IApplicationDbContext
 
     DbSet<DocumentReminderLog> DocumentReminderLogs { get; }
 
+    DbSet<RecurringSchedule> RecurringSchedules { get; }
+
+    DbSet<RecurringScheduleLineItem> RecurringScheduleLineItems { get; }
+
     DbSet<ReminderSettings> ReminderSettingsEntries { get; }
 
     DbSet<AuditLog> AuditLogs { get; }
