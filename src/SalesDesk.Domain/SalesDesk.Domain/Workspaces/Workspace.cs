@@ -30,7 +30,18 @@ public sealed class Workspace : Entity
 
     public bool IsActive { get; private set; }
 
-    /// <summary>Maximum documents this workspace may issue. Null means unlimited.</summary>
+    /// <summary>
+    /// Platform-admin override of this workspace's monthly document limit, adjustable
+    /// via the Admin Workspaces console independent of <see cref="SubscriptionTier"/>
+    /// (e.g. granting a specific Free-tier customer extra headroom, or capping a
+    /// problem account below what its tier would normally allow). Null means no
+    /// override — the effective limit is whatever <c>PricingCatalog.MonthlyDocumentLimit</c>
+    /// says for this workspace's tier (see <c>CreateDocumentCommand</c>). Defaults to
+    /// null for every new workspace: it used to default to 100 before subscription
+    /// tiers existed, which silently raised every Free-tier workspace's real cap from
+    /// tier's 5 to 100 once tier-based enforcement shipped (TASK-038) — see
+    /// docs/feature/billing-plan-limits.md.
+    /// </summary>
     public int? DocumentQuota { get; private set; }
 
     /// <summary>TASK-031: Free for every workspace unless upgraded — see <see cref="GrantEarlyBirdPro"/>.</summary>
@@ -59,7 +70,7 @@ public sealed class Workspace : Entity
         string? tagline = null,
         string? address = null,
         string? logoUrl = null,
-        int? documentQuota = 100,
+        int? documentQuota = null,
         string country = "US",
         string defaultCurrency = "USD",
         string timeZoneId = "UTC")

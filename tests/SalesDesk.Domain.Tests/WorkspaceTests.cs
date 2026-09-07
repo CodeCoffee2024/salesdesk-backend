@@ -111,12 +111,15 @@ public class WorkspaceTests
     }
 
     [Fact]
-    public void Constructor_defaults_to_active_with_a_100_document_quota()
+    public void Constructor_defaults_to_active_with_no_document_quota_override()
     {
         var workspace = new Workspace("Northline", "hello@northline.studio");
 
         workspace.IsActive.Should().BeTrue();
-        workspace.DocumentQuota.Should().Be(100);
+        // Null means "no admin override" — the workspace falls back to its
+        // subscription tier's own limit (see CreateDocumentCommand), not literal
+        // unlimited. See docs/feature/billing-plan-limits.md for why this isn't 100.
+        workspace.DocumentQuota.Should().BeNull();
     }
 
     [Fact]

@@ -7,7 +7,12 @@ using SalesDesk.Domain.Workspaces;
 
 namespace SalesDesk.Application.Admin;
 
-/// <summary>Adjust a tenant's document quota limit — TASK-017 AC3. Null quota means unlimited.</summary>
+/// <summary>
+/// Adjust a tenant's document quota limit — TASK-017 AC3, reconciled with
+/// subscription-tier limits in the VERSION-2 quota fix. Null clears the override
+/// entirely (the workspace falls back to its subscription tier's own monthly limit);
+/// a set value replaces the tier limit outright, in either direction.
+/// </summary>
 public sealed record SetWorkspaceQuotaCommand(Guid WorkspaceId, int? DocumentQuota) : IRequest<WorkspaceSummaryDto>;
 
 public sealed class SetWorkspaceQuotaCommandValidator : AbstractValidator<SetWorkspaceQuotaCommand>
@@ -31,7 +36,7 @@ public sealed class SetWorkspaceQuotaCommandHandler(IApplicationDbContext contex
 
         await auditLogger.LogAsync(
             AuditEventTypes.WorkspaceQuotaChanged,
-            $"Workspace \"{workspace.Name}\" document quota set to {(request.DocumentQuota?.ToString() ?? "unlimited")}.",
+            $"Workspace \"{workspace.Name}\" document quota set to {(request.DocumentQuota?.ToString() ?? "plan default")}.",
             workspace.Id,
             currentUser.UserId,
             cancellationToken);

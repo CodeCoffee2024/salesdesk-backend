@@ -1,5 +1,6 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using SalesDesk.Application.Billing;
 using SalesDesk.Application.Common.Interfaces;
 
 namespace SalesDesk.Application.Admin;
@@ -18,10 +19,23 @@ public sealed class GetPlatformMetricsQueryHandler(IApplicationDbContext context
             var totalUsers = await context.Users.CountAsync(cancellationToken);
             var totalIssuedDocuments = await context.Documents.CountAsync(cancellationToken);
 
-            var activeWorkspacesWithQuota = await context.Workspaces
-                .Where(w => w.IsActive && w.DocumentQuota != null)
-                .Select(w => new { w.Id, Quota = w.DocumentQuota!.Value })
+            // Since the quota-reconciliation fix, most workspaces carry no explicit
+            // DocumentQuota override (null defers to their subscription tier's own
+            // limit — see Workspace.DocumentQuota) — using only the raw column here
+            // would make this metric go quiet for almost every workspace. Resolve
+            // each workspace's *effective* limit (override, else tier default) instead,
+            // same as CreateDocumentCommand does, and still exclude anything that
+            // resolves to unlimited (no tier cap and no override).
+            var activeWorkspaces = await context.Workspaces
+                .Where(w => w.IsActive)
+                .Select(w => new { w.Id, w.DocumentQuota, w.SubscriptionTier })
                 .ToListAsync(cancellationToken);
+
+            var activeWorkspacesWithQuota = activeWorkspaces
+                .Select(w => new { w.Id, Quota = w.DocumentQuota ?? PricingCatalog.MonthlyDocumentLimit(w.SubscriptionTier) })
+                .Where(w => w.Quota is not null)
+                .Select(w => new { w.Id, Quota = w.Quota!.Value })
+                .ToList();
 
             decimal? quotaUsagePercent = null;
             if (activeWorkspacesWithQuota.Count > 0)

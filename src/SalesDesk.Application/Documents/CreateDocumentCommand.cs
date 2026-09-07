@@ -80,17 +80,20 @@ public sealed class CreateDocumentCommandHandler(
 
         var issueDate = DateOnly.FromDateTime(dateTime.UtcNow.Date);
 
-        // TASK-038: Free tier's "5 active documents/month" cap. No workspace row
-        // (e.g. some tests) means no tier to enforce — same permissive fallback as
-        // the currency/country defaults above. Checked before reserving a document
-        // number so a blocked attempt never burns one. SystemAdmin is the platform
-        // operator role (not a paying tenant — see SalesDeskDbContextSeeder's
-        // "SalesDesk HQ" platform workspace), so it's never subject to a plan cap
-        // regardless of which workspace's SubscriptionTier the account happens to
-        // carry.
+        // TASK-038 + the VERSION-2 quota-reconciliation fix: the effective monthly
+        // limit is the workspace's own admin-set DocumentQuota override when one is
+        // set (Admin Workspaces console — can raise a Free-tier workspace above 5 or
+        // cap a paid one below unlimited), falling back to the plain subscription-tier
+        // limit otherwise. No workspace row (e.g. some tests) means no tier to
+        // enforce — same permissive fallback as the currency/country defaults above.
+        // Checked before reserving a document number so a blocked attempt never burns
+        // one. SystemAdmin is the platform operator role (not a paying tenant — see
+        // SalesDeskDbContextSeeder's "SalesDesk HQ" platform workspace), so it's never
+        // subject to a plan cap regardless of which workspace's SubscriptionTier the
+        // account happens to carry.
         if (workspace is not null && currentUser.Role != SalesDesk.Domain.Users.Role.SystemAdmin)
         {
-            var monthlyLimit = PricingCatalog.MonthlyDocumentLimit(workspace.SubscriptionTier);
+            var monthlyLimit = workspace.DocumentQuota ?? PricingCatalog.MonthlyDocumentLimit(workspace.SubscriptionTier);
             if (monthlyLimit is not null)
             {
                 var monthStart = new DateOnly(issueDate.Year, issueDate.Month, 1);

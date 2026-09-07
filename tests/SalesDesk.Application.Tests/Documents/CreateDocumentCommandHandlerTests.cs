@@ -221,6 +221,75 @@ public class CreateDocumentCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_lets_an_admin_quota_override_raise_a_Free_tier_workspace_above_5()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        // Free tier's own limit is 5 — an explicit DocumentQuota override (set via
+        // the Admin Workspaces console) takes precedence over the tier limit,
+        // in either direction. See docs/feature/billing-plan-limits.md.
+        var workspace = new Workspace("Northline", "hello@northline.studio", documentQuota: 10);
+        var scopedCurrentUser = new FakeCurrentUserService(workspace.Id);
+        var customer = new Customer(workspace.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+        var template = new Template(workspace.Id, "Studio Standard", isDefault: true);
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
+
+        // The 6th document alone proves the override raised the cap above the
+        // Free tier's own 5 — it would have thrown at document 6 otherwise (see
+        // Handle_blocks_a_sixth_document_this_month_on_the_Free_tier above).
+        for (var i = 0; i < 10; i++)
+        {
+            await handler.Handle(command, CancellationToken.None);
+        }
+
+        var act = () => handler.Handle(command, CancellationToken.None);
+
+        // The override is still an actual cap, not "ignore the limit" — the 11th
+        // document (past the override's 10) is blocked.
+        await act.Should().ThrowAsync<PlanLimitExceededException>();
+    }
+
+    [Fact]
+    public async Task Handle_defers_to_the_subscription_tier_limit_when_no_quota_override_is_set()
+    {
+        using var fixture = new SqliteApplicationDbContextFixture();
+        // A workspace created with no explicit override (the new default —
+        // DocumentQuota is null, not 100) must still enforce its Free-tier limit
+        // of 5, not fall through to unlimited.
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+        workspace.DocumentQuota.Should().BeNull();
+
+        var scopedCurrentUser = new FakeCurrentUserService(workspace.Id);
+        var customer = new Customer(workspace.Id, "Maya Chen", "Northstar Studio", "maya@northstar.studio");
+        var template = new Template(workspace.Id, "Studio Standard", isDefault: true);
+        fixture.Context.Workspaces.Add(workspace);
+        fixture.Context.Customers.Add(customer);
+        fixture.Context.Templates.Add(template);
+        await fixture.Context.SaveChangesAsync(CancellationToken.None);
+
+        var handler = new CreateDocumentCommandHandler(fixture.Context, fixture.Mapper, new FakeDateTime(Today), scopedCurrentUser, new FakeEmailSender(), new FakePublicLinkBuilder());
+        var command = new CreateDocumentCommand(
+            DocumentType.Quote, customer.Id, template.Id, new DateOnly(2026, 9, 8),
+            [new CreateDocumentLineItemRequest("Work", 1m, 100m, null)]);
+
+        for (var i = 0; i < 5; i++)
+        {
+            await handler.Handle(command, CancellationToken.None);
+        }
+
+        var act = () => handler.Handle(command, CancellationToken.None);
+
+        await act.Should().ThrowAsync<PlanLimitExceededException>();
+    }
+
+    [Fact]
     public async Task Handle_exempts_SystemAdmin_from_the_Free_tier_document_cap()
     {
         using var fixture = new SqliteApplicationDbContextFixture();

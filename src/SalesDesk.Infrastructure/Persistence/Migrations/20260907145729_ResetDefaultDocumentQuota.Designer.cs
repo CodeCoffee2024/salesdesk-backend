@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using SalesDesk.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using SalesDesk.Infrastructure.Persistence;
 namespace SalesDesk.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(SalesDeskDbContext))]
-    partial class SalesDeskDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260907145729_ResetDefaultDocumentQuota")]
+    partial class ResetDefaultDocumentQuota
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -551,126 +554,6 @@ namespace SalesDesk.Infrastructure.Persistence.Migrations
                     b.ToTable("document_signatures", (string)null);
                 });
 
-            modelBuilder.Entity("SalesDesk.Domain.Documents.RecurringSchedule", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<bool>("AutoDispatch")
-                        .HasColumnType("boolean")
-                        .HasColumnName("auto_dispatch");
-
-                    b.Property<string>("ClientCountry")
-                        .HasMaxLength(2)
-                        .HasColumnType("character varying(2)")
-                        .HasColumnName("client_country");
-
-                    b.Property<DateTimeOffset>("CreatedAt")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_at");
-
-                    b.Property<string>("Currency")
-                        .IsRequired()
-                        .HasMaxLength(3)
-                        .HasColumnType("character varying(3)")
-                        .HasColumnName("currency");
-
-                    b.Property<Guid>("CustomerId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("customer_id");
-
-                    b.Property<int>("DueDateOffsetDays")
-                        .HasColumnType("integer")
-                        .HasColumnName("due_date_offset_days");
-
-                    b.Property<string>("Interval")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("interval");
-
-                    b.Property<bool>("IsActive")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_active");
-
-                    b.Property<DateOnly>("NextRunDate")
-                        .HasColumnType("date")
-                        .HasColumnName("next_run_date");
-
-                    b.Property<Guid>("TemplateId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("template_id");
-
-                    b.Property<string>("Type")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)")
-                        .HasColumnName("type");
-
-                    b.Property<Guid>("WorkspaceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("workspace_id");
-
-                    b.HasKey("Id")
-                        .HasName("pk_recurring_schedules");
-
-                    b.HasIndex("CustomerId")
-                        .HasDatabaseName("ix_recurring_schedules_customer_id");
-
-                    b.HasIndex("TemplateId")
-                        .HasDatabaseName("ix_recurring_schedules_template_id");
-
-                    b.HasIndex("WorkspaceId")
-                        .HasDatabaseName("ix_recurring_schedules_workspace_id");
-
-                    b.HasIndex("IsActive", "NextRunDate")
-                        .HasDatabaseName("ix_recurring_schedules_is_active_next_run_date");
-
-                    b.ToTable("recurring_schedules", (string)null);
-                });
-
-            modelBuilder.Entity("SalesDesk.Domain.Documents.RecurringScheduleLineItem", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("description");
-
-                    b.Property<Guid?>("ProductId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("product_id");
-
-                    b.Property<decimal>("Quantity")
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("quantity");
-
-                    b.Property<Guid>("RecurringScheduleId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("recurring_schedule_id");
-
-                    b.Property<decimal>("UnitPrice")
-                        .HasColumnType("decimal(18,2)")
-                        .HasColumnName("unit_price");
-
-                    b.HasKey("Id")
-                        .HasName("pk_recurring_schedule_line_items");
-
-                    b.HasIndex("ProductId")
-                        .HasDatabaseName("ix_recurring_schedule_line_items_product_id");
-
-                    b.HasIndex("RecurringScheduleId")
-                        .HasDatabaseName("ix_recurring_schedule_line_items_recurring_schedule_id");
-
-                    b.ToTable("recurring_schedule_line_items", (string)null);
-                });
-
             modelBuilder.Entity("SalesDesk.Domain.Products.Product", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1144,47 +1027,6 @@ namespace SalesDesk.Infrastructure.Persistence.Migrations
                     b.Navigation("Document");
                 });
 
-            modelBuilder.Entity("SalesDesk.Domain.Documents.RecurringSchedule", b =>
-                {
-                    b.HasOne("SalesDesk.Domain.Customers.Customer", "Customer")
-                        .WithMany()
-                        .HasForeignKey("CustomerId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_recurring_schedules_customers_customer_id");
-
-                    b.HasOne("SalesDesk.Domain.Templates.Template", "Template")
-                        .WithMany()
-                        .HasForeignKey("TemplateId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_recurring_schedules_templates_template_id");
-
-                    b.Navigation("Customer");
-
-                    b.Navigation("Template");
-                });
-
-            modelBuilder.Entity("SalesDesk.Domain.Documents.RecurringScheduleLineItem", b =>
-                {
-                    b.HasOne("SalesDesk.Domain.Products.Product", "Product")
-                        .WithMany()
-                        .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.SetNull)
-                        .HasConstraintName("fk_recurring_schedule_line_items_products_product_id");
-
-                    b.HasOne("SalesDesk.Domain.Documents.RecurringSchedule", "RecurringSchedule")
-                        .WithMany("LineItems")
-                        .HasForeignKey("RecurringScheduleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired()
-                        .HasConstraintName("fk_recurring_schedule_line_items_recurring_schedules_recurring");
-
-                    b.Navigation("Product");
-
-                    b.Navigation("RecurringSchedule");
-                });
-
             modelBuilder.Entity("SalesDesk.Domain.Users.PushSubscription", b =>
                 {
                     b.HasOne("SalesDesk.Domain.Users.User", null)
@@ -1212,11 +1054,6 @@ namespace SalesDesk.Infrastructure.Persistence.Migrations
                     b.Navigation("LineItems");
 
                     b.Navigation("Signature");
-                });
-
-            modelBuilder.Entity("SalesDesk.Domain.Documents.RecurringSchedule", b =>
-                {
-                    b.Navigation("LineItems");
                 });
 #pragma warning restore 612, 618
         }
