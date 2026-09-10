@@ -50,6 +50,13 @@ public sealed class PublicDocumentDto
 
     /// <summary>The client-facing slice of the document's timeline, oldest first — see PublicDocumentMapper for exactly what's included/excluded.</summary>
     public List<PublicDocumentActivityDto> Timeline { get; init; } = [];
+
+    /// <summary>Whether this invoice has actually been paid online via Pay Now (TASK-042) — drives whether the frontend shows a Pay Now button at all.</summary>
+    public PaymentStatus PaymentStatus { get; init; }
+
+    public decimal? PaidAmount { get; init; }
+
+    public DateTime? PaidAtUtc { get; init; }
 }
 
 public sealed class PublicDocumentActivityDto

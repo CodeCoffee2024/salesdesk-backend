@@ -106,6 +106,23 @@ public static class DependencyInjection
         // they do.
         services.AddSingleton<IPaymentGatewayService, UnconfiguredPaymentGatewayService>();
 
+        // Invoice Pay Now (TASK-042) — deliberately separate from the subscription
+        // checkout above: a different gateway interface, keyed on a Document
+        // rather than a Workspace, so it can ship (and be configured) fully
+        // independently of whenever/whether subscription billing gets a real
+        // provider. Same "if configured { real } else { fallback }" shape as
+        // Resend/Gemini above.
+        var stripeSecretKey = configuration["Payments:StripeSecretKey"];
+        if (!string.IsNullOrWhiteSpace(stripeSecretKey))
+        {
+            services.AddSingleton(new Stripe.StripeClient(stripeSecretKey));
+            services.AddSingleton<IInvoicePaymentGatewayService, StripeInvoicePaymentGatewayService>();
+        }
+        else
+        {
+            services.AddSingleton<IInvoicePaymentGatewayService, UnconfiguredInvoicePaymentGatewayService>();
+        }
+
         // Web Push (TASK-027) only goes live once a VAPID keypair is configured —
         // otherwise the view/sign/revision-request notification paths fall back
         // to a log-only sender. See docs/research/TASK-DEPLOYMENT.md.

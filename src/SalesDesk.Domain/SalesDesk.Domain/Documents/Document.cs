@@ -73,10 +73,21 @@ public sealed class Document : Entity
 
     public DateTime? DispatchedAt { get; private set; }
 
+    /// <summary>Whether this invoice has actually been paid online via Pay Now (TASK-042) — independent of Status, since Status can also be set to Paid manually with no real payment behind it.</summary>
+    public PaymentStatus PaymentStatus { get; private set; }
+
+    public decimal? PaidAmount { get; private set; }
+
+    public DateTime? PaidAtUtc { get; private set; }
+
+    /// <summary>The Stripe Checkout Session id for the most recent payment attempt on this document — set when a session is created, used only as an audit trail (the webhook resolves the document via the session's client_reference_id, not by looking this up).</summary>
+    public string? StripeCheckoutSessionId { get; private set; }
+
     private Document()
     {
         DocumentNumber = string.Empty;
         Currency = "USD";
+        PaymentStatus = PaymentStatus.Unpaid;
     }
 
     public Document(
@@ -106,6 +117,7 @@ public sealed class Document : Entity
         Status = DocumentStatus.Draft;
         Currency = Guard.AgainstInvalidIsoCode(currency, 3, nameof(currency));
         ClientCountry = Guard.AgainstInvalidIsoCodeOrNull(clientCountry, 2, nameof(clientCountry));
+        PaymentStatus = PaymentStatus.Unpaid;
     }
 
     public DocumentLineItem AddLineItem(string description, decimal quantity, decimal unitPrice, Guid? productId = null)
@@ -296,6 +308,51 @@ public sealed class Document : Entity
         RevisionRequestedAtUtc = requestedAtUtc;
         Status = DocumentStatus.RevisionRequested;
         RecordActivity(DocumentActivityType.RevisionRequested, feedback, requestedAtUtc);
+    }
+
+    /// <summary>
+    /// Records that a Stripe Checkout Session was started for this invoice
+    /// (TASK-042) — called right after the gateway returns a session, before the
+    /// client is redirected to pay. Only an Invoice that hasn't already been paid
+    /// can start a new session; a Quote has nothing to pay, and a Paid invoice
+    /// doesn't need another checkout attempt.
+    /// </summary>
+    public void SetCheckoutSession(string stripeCheckoutSessionId)
+    {
+        if (Type != DocumentType.Invoice)
+        {
+            throw new InvalidOperationException($"Document '{Id}' is a {Type}, not an Invoice, and can't be paid.");
+        }
+
+        if (PaymentStatus == PaymentStatus.Paid)
+        {
+            throw new InvalidOperationException($"Document '{Id}' has already been paid.");
+        }
+
+        StripeCheckoutSessionId = Guard.AgainstNullOrWhiteSpace(stripeCheckoutSessionId, nameof(stripeCheckoutSessionId));
+    }
+
+    /// <summary>
+    /// Records a completed online payment (TASK-042), driven by the Stripe webhook
+    /// once it verifies a checkout session actually completed. Deliberately a
+    /// no-op — not an exception — when the document is already Paid: Stripe
+    /// retries webhook deliveries automatically, and a retried delivery of an
+    /// already-processed event must never throw or re-notify anyone. Not gated by
+    /// EnsureNotLocked/EnsureEditable: paying an invoice is independent of
+    /// whether it's been e-signed.
+    /// </summary>
+    public void RecordPayment(decimal amount, DateTime paidAtUtc, string providerReference)
+    {
+        if (PaymentStatus == PaymentStatus.Paid)
+        {
+            return;
+        }
+
+        PaymentStatus = PaymentStatus.Paid;
+        PaidAmount = amount;
+        PaidAtUtc = paidAtUtc;
+        Status = DocumentStatus.Paid;
+        RecordActivity(DocumentActivityType.PaymentReceived, providerReference, paidAtUtc);
     }
 
     /// <summary>

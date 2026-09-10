@@ -425,4 +425,92 @@ public class DocumentTests
         document.Activities.Should().ContainSingle(a =>
             a.Type == DocumentActivityType.Signed && a.Detail == "Jane Client" && a.OccurredAtUtc == signedAt.UtcDateTime);
     }
+
+    [Fact]
+    public void Constructor_starts_Unpaid()
+    {
+        var document = CreateDocument();
+
+        document.PaymentStatus.Should().Be(PaymentStatus.Unpaid);
+        document.PaidAmount.Should().BeNull();
+        document.PaidAtUtc.Should().BeNull();
+    }
+
+    [Fact]
+    public void SetCheckoutSession_stores_the_session_id_on_an_unpaid_invoice()
+    {
+        var document = CreateDocument(DocumentType.Invoice);
+
+        document.SetCheckoutSession("cs_test_123");
+
+        document.StripeCheckoutSessionId.Should().Be("cs_test_123");
+    }
+
+    [Fact]
+    public void SetCheckoutSession_throws_for_a_quote()
+    {
+        var document = CreateDocument(DocumentType.Quote);
+
+        var act = () => document.SetCheckoutSession("cs_test_123");
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void SetCheckoutSession_throws_once_already_paid()
+    {
+        var document = CreateDocument(DocumentType.Invoice);
+        document.RecordPayment(500m, DateTime.UtcNow, "cs_test_paid");
+
+        var act = () => document.SetCheckoutSession("cs_test_456");
+
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void RecordPayment_marks_the_invoice_paid_and_records_a_PaymentReceived_activity()
+    {
+        var document = CreateDocument(DocumentType.Invoice);
+        var paidAt = new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc);
+
+        document.RecordPayment(1250m, paidAt, "cs_test_789");
+
+        document.PaymentStatus.Should().Be(PaymentStatus.Paid);
+        document.PaidAmount.Should().Be(1250m);
+        document.PaidAtUtc.Should().Be(paidAt);
+        document.Status.Should().Be(DocumentStatus.Paid);
+        document.Activities.Should().ContainSingle(a =>
+            a.Type == DocumentActivityType.PaymentReceived && a.Detail == "cs_test_789" && a.OccurredAtUtc == paidAt);
+    }
+
+    [Fact]
+    public void RecordPayment_is_a_no_op_when_called_again_after_already_paid()
+    {
+        var document = CreateDocument(DocumentType.Invoice);
+        var firstPaidAt = new DateTime(2026, 9, 1, 12, 0, 0, DateTimeKind.Utc);
+        document.RecordPayment(1250m, firstPaidAt, "cs_test_789");
+
+        // Simulates Stripe retrying the same webhook delivery — must not throw,
+        // must not change any field, must not append a second activity entry.
+        document.RecordPayment(9999m, firstPaidAt.AddMinutes(5), "cs_test_other");
+
+        document.PaidAmount.Should().Be(1250m);
+        document.PaidAtUtc.Should().Be(firstPaidAt);
+        document.Activities.Where(a => a.Type == DocumentActivityType.PaymentReceived).Should().ContainSingle();
+    }
+
+    [Fact]
+    public void RecordPayment_is_not_blocked_by_a_locked_signed_document()
+    {
+        var document = CreateDocument(DocumentType.Invoice);
+        document.AddLineItem("Consulting", 1m, 500m);
+        document.ApplySignature(
+            "Jane Client", "jane@example.com", SignatureType.Drawn, "data:image/png;base64,abc==",
+            "203.0.113.5", "Mozilla/5.0", DateTimeOffset.UtcNow);
+
+        var act = () => document.RecordPayment(500m, DateTime.UtcNow, "cs_test_signed");
+
+        act.Should().NotThrow();
+        document.PaymentStatus.Should().Be(PaymentStatus.Paid);
+    }
 }

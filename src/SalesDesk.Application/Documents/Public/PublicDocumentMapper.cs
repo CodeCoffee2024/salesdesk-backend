@@ -46,6 +46,9 @@ internal static class PublicDocumentMapper
                 UnitPrice = li.UnitPrice,
                 LineTotal = li.LineTotal
             }).ToList(),
+            PaymentStatus = document.PaymentStatus,
+            PaidAmount = document.PaidAmount,
+            PaidAtUtc = document.PaidAtUtc,
             IsSigned = document.Signature is not null,
             SignedByName = document.Signature?.SignerName,
             SignedAtUtc = document.Signature?.SignedAtUtc,

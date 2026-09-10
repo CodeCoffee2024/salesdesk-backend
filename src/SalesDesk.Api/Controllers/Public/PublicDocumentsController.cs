@@ -56,4 +56,17 @@ public sealed class PublicDocumentsController(ISender sender) : ControllerBase
         var result = await sender.Send(new RequestDocumentRevisionCommand(token, request.Feedback), cancellationToken);
         return Ok(result);
     }
+
+    /// <summary>
+    /// TASK-042: starts a Stripe Checkout session for paying this invoice online.
+    /// Doesn't mark anything Paid itself — that only happens once Stripe's
+    /// webhook confirms the session actually completed (see StripeWebhookController).
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("{token:guid}/payment-session")]
+    public async Task<ActionResult<CheckoutSessionDto>> CreatePaymentSession(Guid token, CancellationToken cancellationToken)
+    {
+        var result = await sender.Send(new CreateDocumentPaymentSessionCommand(token), cancellationToken);
+        return Ok(result);
+    }
 }

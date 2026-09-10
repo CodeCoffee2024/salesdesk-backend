@@ -96,6 +96,23 @@ public sealed class DocumentConfiguration : IEntityTypeConfiguration<Document>
         builder.Navigation(d => d.Activities)
             .UsePropertyAccessMode(PropertyAccessMode.Field);
 
+        builder.Property(d => d.PaymentStatus)
+            .HasConversion<string>()
+            .HasMaxLength(20)
+            .IsRequired();
+
+        builder.Property(d => d.PaidAmount)
+            .HasColumnType("decimal(18,2)");
+
+        builder.Property(d => d.StripeCheckoutSessionId)
+            .HasMaxLength(255);
+
+        // Looked up by the Stripe webhook to correlate a completed session back to
+        // its document — NULLs (the common case, before any payment is attempted)
+        // don't collide under a unique index in Postgres, same as PublicToken above.
+        builder.HasIndex(d => d.StripeCheckoutSessionId)
+            .IsUnique();
+
         builder.HasIndex(d => d.CustomerId);
         builder.HasIndex(d => d.Status);
         builder.HasIndex(d => d.Type);

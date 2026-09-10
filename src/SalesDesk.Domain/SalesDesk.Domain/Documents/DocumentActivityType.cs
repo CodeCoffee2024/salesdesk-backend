@@ -31,5 +31,8 @@ public enum DocumentActivityType
     StatusChanged,
 
     /// <summary>An automated payment/follow-up reminder email was sent (TASK-025).</summary>
-    ReminderSent
+    ReminderSent,
+
+    /// <summary>The client paid the invoice online via Pay Now (TASK-042). Named distinctly from DocumentStatus.Paid to keep "the document is in the Paid state" and "a payment event occurred" readable as separate concepts in code and logs.</summary>
+    PaymentReceived
 }
