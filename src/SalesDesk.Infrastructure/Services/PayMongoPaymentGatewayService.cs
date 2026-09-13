@@ -1,5 +1,6 @@
 using System.Net.Http.Json;
 using System.Text.Json.Serialization;
+using Microsoft.Extensions.Configuration;
 using SalesDesk.Application.Common.Exceptions;
 using SalesDesk.Application.Common.Interfaces;
 
@@ -8,20 +9,28 @@ namespace SalesDesk.Infrastructure.Services;
 /// <summary>
 /// Real (non-stubbed) implementation of <see cref="IPaymentGatewayService"/> against
 /// PayMongo's Checkout Sessions API (https://developers.paymongo.com/reference/the-checkout-session-object)
-/// — the platform's payment gateway for Philippines-registered workspaces, offering
-/// card, GCash, and Maya as payment methods within the one hosted checkout page.
-/// Registered in DependencyInjection only once Payments:PayMongoSecretKey is
-/// configured; the HttpClient's BaseAddress and Basic-auth header (username = secret
-/// key, no password — PayMongo's own convention, same shape as Stripe's) are both set
-/// there. Not usable for a non-PHP workspace: PayMongo settles in PHP only, so a
-/// Global-catalog checkout (USD) fails clearly rather than silently misbilling.
+/// — the platform's payment gateway for Philippines-registered workspaces. Registered
+/// in DependencyInjection only once Payments:PayMongoSecretKey is configured; the
+/// HttpClient's BaseAddress and Basic-auth header (username = secret key, no password
+/// — PayMongo's own convention, same shape as Stripe's) are both set there. Not usable
+/// for a non-PHP workspace: PayMongo settles in PHP only, so a Global-catalog checkout
+/// (USD) fails clearly rather than silently misbilling.
+///
+/// Which payment channels the hosted checkout page offers (card, gcash, paymaya, qrph,
+/// ...) is read from Payments:PayMongoPaymentMethodTypes (comma-separated), defaulting
+/// to just "qrph" — PayMongo only lets a live checkout session request a channel your
+/// account has actually been approved for, and a freshly-verified account typically has
+/// QRPh live well before card/e-wallets clear their own review. Requesting an
+/// unapproved channel makes PayMongo reject the whole session, which otherwise surfaces
+/// as a confusing "not available" error with no indication which channel was the
+/// problem. Update the config value (no redeploy needed) as PayMongo approves more.
 ///
 /// The workspace/tier/billingCycle this session is for travels in PayMongo's own
 /// `metadata` field rather than a row this app persists up front — PayMongoWebhookController
 /// reads it straight back off the `checkout_session.payment.paid` event once payment
 /// completes, so there's nothing to reconcile or clean up for an abandoned session.
 /// </summary>
-public sealed class PayMongoPaymentGatewayService(HttpClient httpClient, IPublicLinkBuilder linkBuilder) : IPaymentGatewayService
+public sealed class PayMongoPaymentGatewayService(HttpClient httpClient, IPublicLinkBuilder linkBuilder, IConfiguration configuration) : IPaymentGatewayService
 {
     public async Task<CheckoutSession> CreateCheckoutSessionAsync(
         Guid workspaceId, string tier, string billingCycle, string currency, decimal amount, CancellationToken cancellationToken)
@@ -34,10 +43,13 @@ public sealed class PayMongoPaymentGatewayService(HttpClient httpClient, IPublic
 
         var periodLabel = billingCycle == "Annual" ? "Annual" : "Monthly";
         var lineItemName = $"SalesDesk Full Access — {periodLabel}";
+        var paymentMethodTypes = (configuration["Payments:PayMongoPaymentMethodTypes"] ?? "qrph")
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
 
         var requestBody = new PayMongoCheckoutSessionRequest(new(new(
             LineItems: [new(Amount: (int)Math.Round(amount * 100m), Currency: "PHP", Name: lineItemName, Quantity: 1)],
-            PaymentMethodTypes: ["card", "gcash", "paymaya"],
+            PaymentMethodTypes: paymentMethodTypes,
             Description: lineItemName,
             SendEmailReceipt: false,
             ShowLineItems: true,
