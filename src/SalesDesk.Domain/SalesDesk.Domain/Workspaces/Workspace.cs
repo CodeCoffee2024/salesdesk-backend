@@ -53,6 +53,9 @@ public sealed class Workspace : Entity
     /// <summary>True for one of the first 100 eligible accounts registered — drives the "Early 100 Free Year" badge on /settings/billing. Distinct from SubscriptionTier because a future non-promo Premium upgrade shouldn't retroactively claim this badge.</summary>
     public bool IsEarlyBirdPromo { get; private set; }
 
+    /// <summary>True while this workspace is on its one-time 7-day Full Access trial (<see cref="StartFreeTrial"/>) — drives the "Free trial" badge on /settings/billing, distinct from a real paid subscription or the early-bird promo. Cleared the moment a real paid subscription activates (<see cref="ActivatePaidSubscription"/>), so a customer who upgrades mid-trial sees "paid", not "trial".</summary>
+    public bool IsFreeTrial { get; private set; }
+
     public DateTimeOffset CreatedAt { get; private set; }
 
     private Workspace()
@@ -133,9 +136,27 @@ public sealed class Workspace : Entity
     }
 
     /// <summary>
+    /// Grants every new registration a one-time 7-day Full Access trial —
+    /// called from RegisterCommandHandler for any workspace that didn't win the
+    /// (better, 365-day) early-bird promo instead. Unlike <see cref="ActivatePaidSubscription"/>,
+    /// this sets <see cref="IsFreeTrial"/> so the billing page can show "free
+    /// trial" rather than "paid plan", and unlike the promo it's expected to
+    /// actually lapse — see <see cref="EffectiveSubscriptionTier"/>, which is what
+    /// enforces that expiry (this property alone doesn't).
+    /// </summary>
+    public void StartFreeTrial(DateTimeOffset registeredAtUtc)
+    {
+        SubscriptionTier = SubscriptionTier.Pro;
+        SubscriptionEndDate = registeredAtUtc.AddDays(7);
+        IsFreeTrial = true;
+    }
+
+    /// <summary>
     /// TASK-039: activates a paid tier once an admin approves a manual GCash
-    /// payment submission — the one real (non-stubbed) upgrade path today. Doesn't
-    /// touch IsEarlyBirdPromo: this is a standard paid upgrade, not the promo.
+    /// payment submission, an upgrade request, or (once configured) a real
+    /// PayMongo checkout completes. Doesn't touch IsEarlyBirdPromo: this is a
+    /// standard paid upgrade, not the promo. Does clear IsFreeTrial — a customer
+    /// who pays mid-trial is now a real paying customer, not a trialist.
     /// </summary>
     public void ActivatePaidSubscription(SubscriptionTier tier, DateTimeOffset expiresAtUtc)
     {
@@ -146,5 +167,23 @@ public sealed class Workspace : Entity
 
         SubscriptionTier = tier;
         SubscriptionEndDate = expiresAtUtc;
+        IsFreeTrial = false;
     }
+
+    /// <summary>
+    /// The tier that should actually govern plan limits and billing display right
+    /// now: <see cref="SubscriptionTier"/> itself, unless it's a time-boxed paid
+    /// grant (trial, early-bird promo, or a paid subscription that was never
+    /// renewed) whose <see cref="SubscriptionEndDate"/> has already passed, in
+    /// which case it's Free. SubscriptionTier/SubscriptionEndDate are deliberately
+    /// left untouched when this happens — there's no background job reverting an
+    /// expired grant, so every caller that cares about "is this workspace
+    /// actually still paid" (CreateDocumentCommand's quota check,
+    /// GetWorkspaceBillingQuery's display) must call this instead of reading
+    /// SubscriptionTier raw.
+    /// </summary>
+    public SubscriptionTier EffectiveSubscriptionTier(DateTimeOffset nowUtc) =>
+        SubscriptionTier != SubscriptionTier.Free && SubscriptionEndDate is { } endDate && endDate <= nowUtc
+            ? SubscriptionTier.Free
+            : SubscriptionTier;
 }

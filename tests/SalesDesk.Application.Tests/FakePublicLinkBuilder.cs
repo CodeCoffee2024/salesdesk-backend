@@ -15,4 +15,6 @@ public sealed class FakePublicLinkBuilder : IPublicLinkBuilder
     public string BuildApproveGCashSubscriptionUrl(string rawToken) => $"https://api.example.test/api/admin/subscriptions/approve?token={rawToken}";
 
     public string BuildApproveUpgradeRequestUrl(string rawToken) => $"https://api.example.test/api/admin/subscriptions/approve-upgrade-request?token={rawToken}";
+
+    public string BuildBillingCheckoutResultUrl(bool succeeded) => $"https://app.example.test/settings/billing?checkout={(succeeded ? "success" : "cancelled")}";
 }

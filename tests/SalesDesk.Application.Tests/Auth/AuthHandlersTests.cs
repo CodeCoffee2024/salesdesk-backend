@@ -410,15 +410,15 @@ public class AuthHandlersTests
     }
 
     [Fact]
-    public async Task Register_falls_back_to_standard_Free_provisioning_once_the_promo_cap_is_reached()
+    public async Task Register_falls_back_to_the_7_day_free_trial_once_the_promo_cap_is_reached()
     {
         using var fixture = new SqliteApplicationDbContextFixture();
 
         // Fast-forward straight to "the cap is already reached" rather than
         // registering 100 accounts — the boundary itself (the 100th vs. the
         // 101st) is covered by EarlyBirdPromoReservationTests; this test only
-        // needs to prove that registration #101 onward doesn't crash and simply
-        // provisions Free, per TASK-031's graceful-fallback AC.
+        // needs to prove that registration #101 onward doesn't crash and grants
+        // the standard 7-day Full Access trial instead of the promo.
         await fixture.CreateContext().Database.ExecuteSqlInterpolatedAsync(
             $"UPDATE promo_counters SET count = {PromoCounter.EarlyBirdCap} WHERE key = {PromoCounter.EarlyBirdPremiumKey}",
             CancellationToken.None);
@@ -428,8 +428,9 @@ public class AuthHandlersTests
             new RegisterCommand("maya@northstar.studio", "correct-horse", "Maya Chen", "Northstar Studio"), CancellationToken.None);
 
         var workspace = fixture.CreateContext().Workspaces.Single(w => w.Id == result.User.WorkspaceId);
-        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Free);
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Pro);
         workspace.IsEarlyBirdPromo.Should().BeFalse();
-        workspace.SubscriptionEndDate.Should().BeNull();
+        workspace.IsFreeTrial.Should().BeTrue();
+        workspace.SubscriptionEndDate.Should().NotBeNull();
     }
 }

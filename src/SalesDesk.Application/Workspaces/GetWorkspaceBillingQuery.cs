@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using SalesDesk.Application.Billing;
 using SalesDesk.Application.Common.Extensions;
 using SalesDesk.Application.Common.Interfaces;
+using SalesDesk.Domain.Workspaces;
 
 namespace SalesDesk.Application.Workspaces;
 
@@ -17,7 +18,10 @@ public sealed class GetWorkspaceBillingQueryHandler(IApplicationDbContext contex
         var workspaceId = currentUser.RequireWorkspaceId();
         var workspace = await context.Workspaces.SingleAsync(w => w.Id == workspaceId, cancellationToken);
 
-        var today = DateOnly.FromDateTime(dateTime.UtcNow.Date);
+        var now = dateTime.UtcNow;
+        var effectiveTier = workspace.EffectiveSubscriptionTier(now);
+
+        var today = DateOnly.FromDateTime(now.Date);
         var monthStart = new DateOnly(today.Year, today.Month, 1);
         var documentsIssuedThisMonth = await context.Documents
             .CountAsync(d => d.WorkspaceId == workspaceId && d.IssueDate >= monthStart, cancellationToken);
@@ -41,10 +45,11 @@ public sealed class GetWorkspaceBillingQueryHandler(IApplicationDbContext contex
 
         return new WorkspaceBillingDto
         {
-            SubscriptionTier = workspace.SubscriptionTier.ToString(),
+            SubscriptionTier = effectiveTier.ToString(),
             SubscriptionEndDate = workspace.SubscriptionEndDate,
             IsEarlyBirdPromo = workspace.IsEarlyBirdPromo,
-            MonthlyDocumentLimit = PricingCatalog.MonthlyDocumentLimit(workspace.SubscriptionTier),
+            IsFreeTrial = workspace.IsFreeTrial && effectiveTier != SubscriptionTier.Free,
+            MonthlyDocumentLimit = PricingCatalog.MonthlyDocumentLimit(effectiveTier),
             DocumentsIssuedThisMonth = documentsIssuedThisMonth,
             PendingGCashSubmission = pendingSubmission is null
                 ? null

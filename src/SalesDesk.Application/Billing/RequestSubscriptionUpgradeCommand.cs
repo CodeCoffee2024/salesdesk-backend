@@ -24,7 +24,7 @@ public sealed class RequestSubscriptionUpgradeCommandValidator : AbstractValidat
 {
     public RequestSubscriptionUpgradeCommandValidator()
     {
-        RuleFor(c => c.Tier).Must(t => t is "Pro" or "Studio").WithMessage("Tier must be Pro or Studio.");
+        RuleFor(c => c.Tier).Must(t => t is "Pro").WithMessage("Tier must be Pro.");
         RuleFor(c => c.BillingCycle).Must(c => c is "Monthly" or "Annual").WithMessage("BillingCycle must be Monthly or Annual.");
         RuleFor(c => c.Note).MaximumLength(2000);
     }

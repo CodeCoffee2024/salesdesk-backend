@@ -56,6 +56,10 @@ public sealed class WorkspaceConfiguration : IEntityTypeConfiguration<Workspace>
         builder.Property(w => w.IsEarlyBirdPromo)
             .IsRequired();
 
+        builder.Property(w => w.IsFreeTrial)
+            .HasDefaultValue(false)
+            .IsRequired();
+
         builder.Property(w => w.CreatedAt)
             .IsRequired();
     }

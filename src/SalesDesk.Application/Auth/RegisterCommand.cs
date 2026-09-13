@@ -38,8 +38,10 @@ public sealed class RegisterCommandValidator : AbstractValidator<RegisterCommand
 /// TASK-031: before provisioning the workspace, this also tries to claim one of
 /// the first 100 "Early 100 Free Year" promo slots — see
 /// IApplicationDbContext.TryReserveEarlyBirdPromoSlotAsync for why that's safe
-/// under concurrent registrations. A miss (cap already reached) isn't an error:
-/// the workspace is just provisioned as standard Free, same as any other account.
+/// under concurrent registrations. A miss (cap already reached) doesn't fall all
+/// the way back to Free: every new workspace instead gets a one-time 7-day Full
+/// Access trial (<see cref="Workspace.StartFreeTrial"/>) — the promo (365 days,
+/// no card needed) is strictly better, so it always wins when both would apply.
 /// </summary>
 public sealed class RegisterCommandHandler(
     IApplicationDbContext context,
@@ -71,6 +73,10 @@ public sealed class RegisterCommandHandler(
         if (await context.TryReserveEarlyBirdPromoSlotAsync(cancellationToken))
         {
             workspace.GrantEarlyBirdPro(dateTime.UtcNow);
+        }
+        else
+        {
+            workspace.StartFreeTrial(dateTime.UtcNow);
         }
 
         context.Workspaces.Add(workspace);

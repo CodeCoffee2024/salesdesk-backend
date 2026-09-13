@@ -32,7 +32,7 @@ public sealed class SubmitGCashPaymentCommandValidator : AbstractValidator<Submi
 
     public SubmitGCashPaymentCommandValidator()
     {
-        RuleFor(c => c.Tier).Must(t => t is "Pro" or "Studio").WithMessage("Tier must be Pro or Studio.");
+        RuleFor(c => c.Tier).Must(t => t is "Pro").WithMessage("Tier must be Pro.");
         RuleFor(c => c.BillingCycle).Must(c => c is "Monthly" or "Annual").WithMessage("BillingCycle must be Monthly or Annual.");
         RuleFor(c => c.GCashReferenceNumber).Matches("^\\d{13}$").WithMessage("GCash reference number must be exactly 13 digits.");
         RuleFor(c => c.SenderName).NotEmpty().MaximumLength(200);

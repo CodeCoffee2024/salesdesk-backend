@@ -3,7 +3,7 @@ using SalesDesk.Application.Common.Interfaces;
 
 namespace SalesDesk.Application.Billing;
 
-/// <summary>TASK-039: what the "Pay via GCash" modal needs to render — the platform's own receiving account details plus the PH pricing tiers to quote an exact amount due for Pro/Studio, Monthly/Annual.</summary>
+/// <summary>TASK-039: what the "Pay via GCash" modal needs to render — the platform's own receiving account details plus the PH pricing tiers to quote an exact amount due for Pro, Monthly/Annual.</summary>
 public sealed record GCashPaymentDetailsDto(string? AccountName, string? MobileNumber, string? QrCodeUrl, List<PricingTierDto> Tiers);
 
 public sealed record GetGCashPaymentDetailsQuery : IRequest<GCashPaymentDetailsDto>;

@@ -43,7 +43,7 @@ public class ApproveSubscriptionUpgradeRequestCommandHandlerTests
     [Fact]
     public async Task Handle_activates_the_workspace_and_sends_a_confirmation_email()
     {
-        var (fixture, workspaceId, rawToken) = await SeedRequestedAsync(tier: "Studio", billingCycle: "Annual");
+        var (fixture, workspaceId, rawToken) = await SeedRequestedAsync(tier: "Pro", billingCycle: "Annual");
         using var _1 = fixture;
         var emailSender = new FakeEmailSender();
         var handler = new ApproveSubscriptionUpgradeRequestCommandHandler(fixture.CreateContext(), DateTime, emailSender);
@@ -51,11 +51,11 @@ public class ApproveSubscriptionUpgradeRequestCommandHandlerTests
         var result = await handler.Handle(new ApproveSubscriptionUpgradeRequestCommand(rawToken), CancellationToken.None);
 
         result.WasAlreadyApproved.Should().BeFalse();
-        result.Tier.Should().Be("Studio");
+        result.Tier.Should().Be("Pro");
         result.ExpiresAtUtc.Should().Be(DateTime.UtcNow.AddDays(365));
 
         var workspace = await fixture.CreateContext().Workspaces.SingleAsync(w => w.Id == workspaceId);
-        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Studio);
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Pro);
 
         emailSender.SentMessages.Should().ContainSingle();
         emailSender.SentMessages[0].To.Should().Be("hello@northline.studio");

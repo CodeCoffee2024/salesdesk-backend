@@ -46,7 +46,7 @@ public class ApproveGCashPaymentCommandHandlerTests
     [Fact]
     public async Task Handle_activates_the_workspace_and_sends_a_confirmation_email()
     {
-        var (fixture, workspaceId, rawToken) = await SeedSubmittedAsync(tier: "Studio", billingCycle: "Annual");
+        var (fixture, workspaceId, rawToken) = await SeedSubmittedAsync(tier: "Pro", billingCycle: "Annual");
         using var _1 = fixture;
         var emailSender = new FakeEmailSender();
         var handler = new ApproveGCashPaymentCommandHandler(fixture.CreateContext(), DateTime, emailSender);
@@ -54,11 +54,11 @@ public class ApproveGCashPaymentCommandHandlerTests
         var result = await handler.Handle(new ApproveGCashPaymentCommand(rawToken), CancellationToken.None);
 
         result.WasAlreadyApproved.Should().BeFalse();
-        result.Tier.Should().Be("Studio");
+        result.Tier.Should().Be("Pro");
         result.ExpiresAtUtc.Should().Be(DateTime.UtcNow.AddDays(365));
 
         var workspace = await fixture.CreateContext().Workspaces.SingleAsync(w => w.Id == workspaceId);
-        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Studio);
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Pro);
         workspace.SubscriptionEndDate.Should().Be(DateTime.UtcNow.AddDays(365));
 
         emailSender.SentMessages.Should().ContainSingle();

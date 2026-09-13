@@ -97,14 +97,28 @@ public static class DependencyInjection
             services.AddSingleton<IQuoteTextParser, UnconfiguredQuoteTextParser>();
         }
 
-        // Payment processing (TASK-038) has no real provider wired up yet — no
-        // PayMongo/Stripe/PayPal account exists for this project to date, so
-        // there's nothing to conditionally switch on the way Gemini/Resend/VAPID
-        // above do. Every checkout attempt fails clearly (see
-        // UnconfiguredPaymentGatewayService) until real credentials exist; add the
-        // same `if (configured) { real impl } else { fallback }` shape above once
-        // they do.
-        services.AddSingleton<IPaymentGatewayService, UnconfiguredPaymentGatewayService>();
+        // Subscription checkout (TASK-038) goes live once Payments:PayMongoSecretKey
+        // is configured — PayMongoPaymentGatewayService offers card/GCash/Maya in
+        // one hosted checkout for PH workspaces (the only currency it settles in;
+        // see its own doc comment for why a Global/USD workspace still gets a clear
+        // "not available" error rather than a real charge attempt). Same
+        // "if (configured) { real impl } else { fallback }" shape as Resend/Gemini
+        // above; UnconfiguredPaymentGatewayService covers every environment that
+        // hasn't set the key yet.
+        var payMongoSecretKey = configuration["Payments:PayMongoSecretKey"];
+        if (!string.IsNullOrWhiteSpace(payMongoSecretKey))
+        {
+            services.AddHttpClient<IPaymentGatewayService, PayMongoPaymentGatewayService>(client =>
+            {
+                client.BaseAddress = new Uri("https://api.paymongo.com/v1/");
+                var basicAuthValue = Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes($"{payMongoSecretKey}:"));
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Basic", basicAuthValue);
+            });
+        }
+        else
+        {
+            services.AddSingleton<IPaymentGatewayService, UnconfiguredPaymentGatewayService>();
+        }
 
         // Invoice Pay Now (TASK-042) — deliberately separate from the subscription
         // checkout above: a different gateway interface, keyed on a Document

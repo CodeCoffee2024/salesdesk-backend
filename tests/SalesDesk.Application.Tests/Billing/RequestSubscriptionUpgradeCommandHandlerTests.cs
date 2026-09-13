@@ -47,11 +47,11 @@ public class RequestSubscriptionUpgradeCommandHandlerTests
             fixture.CreateContext(), new FakeCurrentUserService(workspaceId), DateTime, emailSender, new FakePublicLinkBuilder(),
             new FakeBillingSettings { AdminNotificationEmail = "ops@salesdesk.test" });
 
-        await handler.Handle(new RequestSubscriptionUpgradeCommand("Studio", "Annual", null), CancellationToken.None);
+        await handler.Handle(new RequestSubscriptionUpgradeCommand("Pro", "Annual", null), CancellationToken.None);
 
         emailSender.SentMessages.Should().ContainSingle();
         emailSender.SentMessages[0].To.Should().Be("ops@salesdesk.test");
-        emailSender.SentMessages[0].HtmlBody.Should().Contain("Studio");
+        emailSender.SentMessages[0].HtmlBody.Should().Contain("Pro");
     }
 
     [Fact]

@@ -18,7 +18,7 @@ public sealed record PricingTierDto(
 public sealed record PricingCatalogDto(string Region, string Currency, List<PricingTierDto> Tiers);
 
 /// <summary>
-/// TASK-038: Purchasing Power Parity pricing — a Philippines-registered workspace
+/// Purchasing Power Parity pricing — a Philippines-registered workspace
 /// (Workspace.Country == "PH") sees PHP pricing sized for a local freelancer's
 /// budget; every other workspace sees the USD global catalog. Static, not
 /// database-backed, matching StaticRateCurrencyConversionService's precedent for
@@ -31,6 +31,12 @@ public sealed record PricingCatalogDto(string Region, string Currency, List<Pric
 /// region signal, not a live IP lookup. If real IP-based detection is added
 /// later, it belongs at registration time as a suggested default for Country,
 /// not as a second, separate signal this catalog would also need to reconcile.
+///
+/// Two tiers only — Free Access and Full Access. There used to be a third,
+/// higher "Studio" tier (multi-user RBAC, custom domain portal, payment
+/// reminder automation, inquiry webhooks); the pricing matrix simplified down
+/// to just these two, so Studio's features are now folded into Full Access
+/// (SubscriptionTier.Pro) instead of being a separate, more expensive tier.
 /// </summary>
 public static class PricingCatalog
 {
@@ -44,19 +50,28 @@ public static class PricingCatalog
     public static int? MonthlyDocumentLimit(SubscriptionTier tier) =>
         GlobalCatalog.Tiers.Single(t => t.Tier == tier.ToString()).MonthlyDocumentLimit;
 
+    private static readonly List<string> FullAccessFeatures =
+    [
+        "Unlimited documents",
+        "Dynamic merge tags",
+        "Native e-signatures",
+        "PWA offline support",
+        "Custom logo & branding",
+        "Multi-user RBAC",
+        "Custom domain client portal",
+        "Automated payment reminders",
+        "Client inquiry webhook integration"
+    ];
+
     private static readonly PricingCatalogDto PhCatalog = new(
         "PH",
         "PHP",
         [
             new PricingTierDto(
-                "Free", "Free / Starter", "PHP", 0m, 0m, 5, 1,
+                "Free", "Free Access", "PHP", 0m, 0m, 5, 1,
                 ["Up to 5 active documents/month", "1 user", "SalesDesk watermark on documents"]),
             new PricingTierDto(
-                "Pro", "Pro Freelancer", "PHP", 199m, 1990m, null, 1,
-                ["Unlimited documents", "Dynamic merge tags", "Native e-signatures", "PWA offline support", "Custom logo & branding"]),
-            new PricingTierDto(
-                "Studio", "Studio / Agency", "PHP", 599m, 5990m, null, null,
-                ["Multi-user RBAC", "Custom domain client portal", "Automated payment reminders", "Client inquiry webhook integration"])
+                "Pro", "Full Access", "PHP", 199m, 1990m, null, null, FullAccessFeatures)
         ]);
 
     private static readonly PricingCatalogDto GlobalCatalog = new(
@@ -64,13 +79,9 @@ public static class PricingCatalog
         "USD",
         [
             new PricingTierDto(
-                "Free", "Free / Starter", "USD", 0m, 0m, 5, 1,
+                "Free", "Free Access", "USD", 0m, 0m, 5, 1,
                 ["Up to 5 active documents/month", "1 user", "SalesDesk watermark on documents"]),
             new PricingTierDto(
-                "Pro", "Pro Freelancer", "USD", 9.99m, 99.99m, null, 1,
-                ["Unlimited documents", "Dynamic merge tags", "Native e-signatures", "PWA offline support", "Custom logo & branding"]),
-            new PricingTierDto(
-                "Studio", "Studio / Agency", "USD", 29.99m, 299.99m, null, null,
-                ["Multi-user RBAC", "Custom domain client portal", "Automated payment reminders", "Client inquiry webhook integration"])
+                "Pro", "Full Access", "USD", 9.99m, 99.99m, null, null, FullAccessFeatures)
         ]);
 }

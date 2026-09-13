@@ -91,9 +91,14 @@ public sealed class CreateDocumentCommandHandler(
         // SalesDeskDbContextSeeder's "SalesDesk HQ" platform workspace), so it's never
         // subject to a plan cap regardless of which workspace's SubscriptionTier the
         // account happens to carry.
+        //
+        // EffectiveSubscriptionTier, not the raw SubscriptionTier column: a lapsed
+        // 7-day free trial (or an early-bird promo/paid subscription that was never
+        // renewed) must fall back to the Free plan's cap the moment its
+        // SubscriptionEndDate passes, not keep issuing unlimited documents forever.
         if (workspace is not null && currentUser.Role != SalesDesk.Domain.Users.Role.SystemAdmin)
         {
-            var monthlyLimit = workspace.DocumentQuota ?? PricingCatalog.MonthlyDocumentLimit(workspace.SubscriptionTier);
+            var monthlyLimit = workspace.DocumentQuota ?? PricingCatalog.MonthlyDocumentLimit(workspace.EffectiveSubscriptionTier(dateTime.UtcNow));
             if (monthlyLimit is not null)
             {
                 var monthStart = new DateOnly(issueDate.Year, issueDate.Month, 1);

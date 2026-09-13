@@ -7,14 +7,14 @@ using SalesDesk.Application.Common.Interfaces;
 
 namespace SalesDesk.Application.Billing;
 
-/// <summary>TASK-038: "Upgrade" on /settings/billing. Tier is "Pro" or "Studio" (never "Free" — nothing to check out for that); BillingCycle is "Monthly" or "Annual".</summary>
+/// <summary>"Upgrade" on /settings/billing. Tier is "Pro" (Full Access — never "Free", nothing to check out for that); BillingCycle is "Monthly" or "Annual".</summary>
 public sealed record CreateCheckoutSessionCommand(string Tier, string BillingCycle) : IRequest<CheckoutSession>;
 
 public sealed class CreateCheckoutSessionCommandValidator : AbstractValidator<CreateCheckoutSessionCommand>
 {
     public CreateCheckoutSessionCommandValidator()
     {
-        RuleFor(c => c.Tier).Must(t => t is "Pro" or "Studio").WithMessage("Tier must be Pro or Studio.");
+        RuleFor(c => c.Tier).Must(t => t is "Pro").WithMessage("Tier must be Pro.");
         RuleFor(c => c.BillingCycle).Must(c => c is "Monthly" or "Annual").WithMessage("BillingCycle must be Monthly or Annual.");
     }
 }

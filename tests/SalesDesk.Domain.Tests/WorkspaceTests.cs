@@ -183,11 +183,58 @@ public class WorkspaceTests
         var workspace = new Workspace("Northline", "hello@northline.studio");
         var expiresAt = new DateTimeOffset(2026, 10, 2, 0, 0, 0, TimeSpan.Zero);
 
-        workspace.ActivatePaidSubscription(SubscriptionTier.Studio, expiresAt);
+        workspace.ActivatePaidSubscription(SubscriptionTier.Pro, expiresAt);
 
-        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Studio);
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Pro);
         workspace.SubscriptionEndDate.Should().Be(expiresAt);
         workspace.IsEarlyBirdPromo.Should().BeFalse();
+    }
+
+    [Fact]
+    public void StartFreeTrial_upgrades_to_Pro_expiring_7_days_from_the_given_timestamp_and_sets_IsFreeTrial()
+    {
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+        var registeredAt = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
+
+        workspace.StartFreeTrial(registeredAt);
+
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Pro);
+        workspace.SubscriptionEndDate.Should().Be(registeredAt.AddDays(7));
+        workspace.IsFreeTrial.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ActivatePaidSubscription_clears_IsFreeTrial()
+    {
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+        workspace.StartFreeTrial(new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero));
+
+        workspace.ActivatePaidSubscription(SubscriptionTier.Pro, new DateTimeOffset(2026, 10, 1, 0, 0, 0, TimeSpan.Zero));
+
+        workspace.IsFreeTrial.Should().BeFalse();
+    }
+
+    [Fact]
+    public void EffectiveSubscriptionTier_returns_Free_once_a_time_boxed_grant_has_expired()
+    {
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+        var registeredAt = new DateTimeOffset(2026, 9, 1, 0, 0, 0, TimeSpan.Zero);
+        workspace.StartFreeTrial(registeredAt);
+
+        workspace.EffectiveSubscriptionTier(registeredAt.AddDays(6)).Should().Be(SubscriptionTier.Pro);
+        workspace.EffectiveSubscriptionTier(registeredAt.AddDays(7)).Should().Be(SubscriptionTier.Free);
+        workspace.EffectiveSubscriptionTier(registeredAt.AddDays(8)).Should().Be(SubscriptionTier.Free);
+
+        // The raw column is untouched — expiry is computed on read, not enforced by a background job.
+        workspace.SubscriptionTier.Should().Be(SubscriptionTier.Pro);
+    }
+
+    [Fact]
+    public void EffectiveSubscriptionTier_is_always_Free_for_a_Free_workspace_regardless_of_SubscriptionEndDate()
+    {
+        var workspace = new Workspace("Northline", "hello@northline.studio");
+
+        workspace.EffectiveSubscriptionTier(DateTimeOffset.UtcNow).Should().Be(SubscriptionTier.Free);
     }
 
     [Fact]

@@ -20,7 +20,7 @@ public class AdminHandlersTests
         fixture.Context.Users.Add(new User("admin@northline.studio", "hash", "Jordan Reyes", Role.WorkspaceAdmin, active.Id));
         await fixture.Context.SaveChangesAsync(CancellationToken.None);
 
-        var handler = new GetPlatformMetricsQueryHandler(fixture.Context);
+        var handler = new GetPlatformMetricsQueryHandler(fixture.Context, new FakeDateTime(DateTimeOffset.UtcNow));
         var result = await handler.Handle(new GetPlatformMetricsQuery(), CancellationToken.None);
 
         result.TotalWorkspaces.Should().Be(2);

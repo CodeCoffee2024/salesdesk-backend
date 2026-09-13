@@ -2,13 +2,14 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using SalesDesk.Application.Billing;
 using SalesDesk.Application.Common.Interfaces;
+using SalesDesk.Domain.Workspaces;
 
 namespace SalesDesk.Application.Admin;
 
 public sealed record GetPlatformMetricsQuery : IRequest<PlatformMetricsDto>;
 
 /// <summary>System Admin Console dashboard metrics — TASK-017 AC2.</summary>
-public sealed class GetPlatformMetricsQueryHandler(IApplicationDbContext context) : IRequestHandler<GetPlatformMetricsQuery, PlatformMetricsDto>
+public sealed class GetPlatformMetricsQueryHandler(IApplicationDbContext context, IDateTime dateTime) : IRequestHandler<GetPlatformMetricsQuery, PlatformMetricsDto>
 {
     public async Task<PlatformMetricsDto> Handle(GetPlatformMetricsQuery request, CancellationToken cancellationToken)
     {
@@ -25,14 +26,24 @@ public sealed class GetPlatformMetricsQueryHandler(IApplicationDbContext context
             // would make this metric go quiet for almost every workspace. Resolve
             // each workspace's *effective* limit (override, else tier default) instead,
             // same as CreateDocumentCommand does, and still exclude anything that
-            // resolves to unlimited (no tier cap and no override).
+            // resolves to unlimited (no tier cap and no override). EffectiveSubscriptionTier
+            // (not the raw SubscriptionTier column) so a lapsed trial/promo/subscription
+            // whose SubscriptionEndDate has passed is counted against the Free cap here
+            // too, not still treated as unlimited.
+            var now = dateTime.UtcNow;
             var activeWorkspaces = await context.Workspaces
                 .Where(w => w.IsActive)
-                .Select(w => new { w.Id, w.DocumentQuota, w.SubscriptionTier })
+                .Select(w => new { w.Id, w.DocumentQuota, w.SubscriptionTier, w.SubscriptionEndDate })
                 .ToListAsync(cancellationToken);
 
             var activeWorkspacesWithQuota = activeWorkspaces
-                .Select(w => new { w.Id, Quota = w.DocumentQuota ?? PricingCatalog.MonthlyDocumentLimit(w.SubscriptionTier) })
+                .Select(w =>
+                {
+                    var effectiveTier = w.SubscriptionTier != SubscriptionTier.Free && w.SubscriptionEndDate is { } endDate && endDate <= now
+                        ? SubscriptionTier.Free
+                        : w.SubscriptionTier;
+                    return new { w.Id, Quota = w.DocumentQuota ?? PricingCatalog.MonthlyDocumentLimit(effectiveTier) };
+                })
                 .Where(w => w.Quota is not null)
                 .Select(w => new { w.Id, Quota = w.Quota!.Value })
                 .ToList();

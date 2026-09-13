@@ -20,7 +20,7 @@ public sealed class GCashPaymentSubmission : Entity
 
     public Guid WorkspaceId { get; private set; }
 
-    /// <summary>Always Pro or Studio — there's nothing to pay for on Free.</summary>
+    /// <summary>Always Pro — there's nothing to pay for on Free.</summary>
     public SubscriptionTier Tier { get; private set; }
 
     /// <summary>"Monthly" or "Annual" — determines the subscription length Approve grants.</summary>
@@ -70,7 +70,7 @@ public sealed class GCashPaymentSubmission : Entity
     {
         if (tier == SubscriptionTier.Free)
         {
-            throw new ArgumentOutOfRangeException(nameof(tier), tier, "A GCash payment submission must be for a paid tier (Pro or Studio).");
+            throw new ArgumentOutOfRangeException(nameof(tier), tier, "A GCash payment submission must be for a paid tier (Pro).");
         }
 
         if (billingCycle is not ("Monthly" or "Annual"))
